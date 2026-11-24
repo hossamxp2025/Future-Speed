@@ -1,0 +1,139 @@
+<UserControl x:Class="FutureSpeed.App.Views.BackupView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:FutureSpeed.App.Localization"
+             xmlns:vm="clr-namespace:FutureSpeed.App.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:BackupViewModel}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+            <TextBlock Text="{loc:Str Backup_Title}" Style="{StaticResource Text.H1}" Margin="0,0,0,14" />
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{loc:Str Backup_SetName}" VerticalAlignment="Center"
+                                   Style="{StaticResource Text.Muted}" Margin="0,0,10,0" />
+                        <TextBox Grid.Column="1" Text="{Binding SetName, UpdateSourceTrigger=PropertyChanged}" />
+                    </Grid>
+
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Grid.Column="0" Text="{loc:Str Backup_Root}" VerticalAlignment="Center"
+                                   Style="{StaticResource Text.Muted}" Margin="0,0,10,0" />
+                        <TextBox Grid.Column="1" Text="{Binding BackupRoot, UpdateSourceTrigger=PropertyChanged}" />
+                        <Button Grid.Column="2" Margin="8,0,0,0" Style="{StaticResource Btn.Secondary}"
+                                Command="{Binding BrowseRootCommand}" Content="{loc:Str Common_Browse}" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Separator.H}" />
+
+                    <Grid>
+                        <TextBlock Text="{loc:Str Transfer_Sources}" Style="{StaticResource Text.H3}" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                            <Button Style="{StaticResource Btn.Secondary}" Margin="0,0,6,0"
+                                    Command="{Binding AddFolderCommand}" Content="{loc:Str Common_AddFolder}" />
+                            <Button Style="{StaticResource Btn.Secondary}"
+                                    Command="{Binding AddFilesCommand}" Content="{loc:Str Common_AddFiles}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <ListBox Style="{StaticResource List.Plain}"
+                             ItemContainerStyle="{StaticResource ListItem.Plain}"
+                             MaxHeight="160" Margin="0,10,0,0"
+                             ItemsSource="{Binding Sources}">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Grid.Column="0" Text="{Binding}" TextTrimming="CharacterEllipsis"
+                                               VerticalAlignment="Center" ToolTip="{Binding}" />
+                                    <Button Grid.Column="1" Style="{StaticResource Btn.Ghost}"
+                                            Content="&#xE711;" FontFamily="Segoe MDL2 Assets"
+                                            Command="{Binding DataContext.RemoveSourceCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <CheckBox Content="{loc:Str Transfer_Verify}" IsChecked="{Binding Verify}" Margin="0,10,0,0" />
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+                        <Button Style="{StaticResource Btn.Secondary}" Margin="0,0,8,0"
+                                Command="{Binding RefreshSetsCommand}" Content="{loc:Str Common_Refresh}" />
+                        <Button Style="{StaticResource Btn.Primary}" MinWidth="160"
+                                Command="{Binding CreateCommand}" Content="{loc:Str Backup_Create}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- saved sets -->
+            <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <StackPanel>
+                    <TextBlock Text="{loc:Str Backup_Sets}" Style="{StaticResource Text.H2}" />
+
+                    <TextBlock Text="{loc:Str Backup_Empty}" Style="{StaticResource Text.Muted}" Margin="0,10,0,0"
+                               Visibility="{Binding Sets, Converter={StaticResource HasValue}, ConverterParameter=invert}" />
+
+                    <ItemsControl ItemsSource="{Binding Sets}" Margin="0,10,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource CardAlt}" Padding="12" Margin="0,0,0,8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <StackPanel Grid.Column="0">
+                                            <TextBlock Text="{Binding Name}" Style="{StaticResource Text.H3}" />
+                                            <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding Path}" />
+                                            <TextBlock Style="{StaticResource Text.Muted}">
+                                                <Run Text="{Binding FileCount, Mode=OneWay}" />
+                                                <Run Text=" · " />
+                                                <Run Text="{Binding TotalBytes, Converter={StaticResource Size}, Mode=OneWay}" />
+                                                <Run Text=" · " />
+                                                <Run Text="{Binding CreatedAt, StringFormat={}{0:yyyy-MM-dd HH:mm}, Mode=OneWay}" />
+                                            </TextBlock>
+                                        </StackPanel>
+
+                                        <Button Grid.Column="1" Style="{StaticResource Btn.Secondary}"
+                                                Content="{loc:Str Common_Open}"
+                                                Command="{Binding DataContext.OpenSetCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}" />
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- imaging roadmap -->
+            <Border Style="{StaticResource Card}" Margin="0,14,0,14"
+                    BorderBrush="{DynamicResource Brush.Warning}">
+                <StackPanel>
+                    <TextBlock Text="{loc:Str Backup_Imaging}" Style="{StaticResource Text.H2}" />
+                    <TextBlock Text="{Binding ImagingReason}" Style="{StaticResource Text.Muted}" Margin="0,8,0,0" />
+                    <Button Style="{StaticResource Btn.Secondary}" HorizontalAlignment="Left" Margin="0,12,0,0"
+                            Command="{Binding ShowImagingInfoCommand}" Content="{loc:Str Nav_Help}" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

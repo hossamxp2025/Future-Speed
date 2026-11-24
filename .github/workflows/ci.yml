@@ -1,0 +1,43 @@
+name: build
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-and-test:
+    # WPF needs Windows; the engine tests touch the real file system.
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore
+        run: dotnet restore FutureSpeed.sln
+
+      - name: Build (Release, warnings are failures)
+        run: dotnet build FutureSpeed.sln -c Release --no-restore -warnaserror
+
+      - name: Test
+        run: dotnet test FutureSpeed.sln -c Release --no-build --verbosity normal
+
+      - name: Publish a self-contained build
+        run: >
+          dotnet publish src/FutureSpeed.App/FutureSpeed.App.csproj
+          -c Release -r win-x64 --self-contained true
+          -o artifacts/publish/win-x64
+          /p:DebugType=None /p:DebugSymbols=false
+
+      - name: Upload the build
+        uses: actions/upload-artifact@v4
+        with:
+          name: FutureSpeed-win-x64
+          path: artifacts/publish/win-x64
+          retention-days: 14

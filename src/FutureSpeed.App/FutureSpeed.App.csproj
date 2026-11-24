@@ -1,0 +1,51 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <!-- WinForms is enabled only for NotifyIcon, which is how an unpackaged desktop app
+         raises a real Windows notification without extra dependencies. -->
+    <UseWindowsForms>true</UseWindowsForms>
+    <RootNamespace>FutureSpeed.App</RootNamespace>
+    <AssemblyName>FutureSpeed</AssemblyName>
+    <ApplicationIcon>Assets\FutureSpeed.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <EnableDefaultApplicationDefinition>false</EnableDefaultApplicationDefinition>
+    <!-- WFAC010 is a WinForms-only rule: it asks for ApplicationHighDpiMode instead of a
+         manifest. This is a WPF app, where per-monitor DPI awareness belongs in the
+         manifest, so the rule does not apply. -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ApplicationDefinition Include="App.xaml" SubType="Designer" Generator="MSBuild:Compile" />
+  </ItemGroup>
+
+  <!-- The WinForms SDK adds global usings that collide with WPF (Application, UserControl,
+       FlowDirection, DragEventArgs, ...). WinForms is only used by NotificationService,
+       which imports the namespace explicitly, so the global usings are removed here. -->
+  <ItemGroup>
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.1" />
+    <PackageReference Include="Serilog.Extensions.Logging" Version="8.0.0" />
+    <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
+    <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FutureSpeed.Core\FutureSpeed.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\FutureSpeed.ico" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,71 @@
+<UserControl x:Class="FutureSpeed.App.Views.HelpView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:FutureSpeed.App.Localization"
+             xmlns:vm="clr-namespace:FutureSpeed.App.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:HelpViewModel}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+            <TextBlock Text="{loc:Str Help_Title}" Style="{StaticResource Text.H1}" Margin="0,0,0,14" />
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="{loc:Str App_FullName}" Style="{StaticResource Text.H2}" />
+                    <TextBlock Text="{loc:Str App_Tagline}" Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
+                    <TextBlock Text="{loc:Str Help_Intro}" Margin="0,12,0,0" TextWrapping="Wrap" />
+
+                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                        <Border Style="{StaticResource Badge}">
+                            <TextBlock FontSize="11" Foreground="{DynamicResource Brush.Accent}">
+                                <Run Text="v" /><Run Text="{Binding Version, Mode=OneWay}" />
+                            </TextBlock>
+                        </Border>
+                        <Border Style="{StaticResource Badge}" Margin="6,0,0,0" Background="{DynamicResource Brush.SurfaceAlt}">
+                            <TextBlock FontSize="11" Text=".NET 8 · WPF · MVVM" />
+                        </Border>
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <StackPanel>
+                    <TextBlock Text="{loc:Str Help_Steps}" Style="{StaticResource Text.H2}" />
+                    <TextBlock Text="{loc:Str Help_Step1}" TextWrapping="Wrap" Margin="0,10,0,0" />
+                    <TextBlock Text="{loc:Str Help_Step2}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    <TextBlock Text="{loc:Str Help_Step3}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    <TextBlock Text="{loc:Str Help_Step4}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    <TextBlock Text="{loc:Str Help_Step5}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <StackPanel>
+                    <TextBlock Text="{loc:Str Help_Safety}" Style="{StaticResource Text.H2}" />
+                    <TextBlock Text="{loc:Str Help_Safety1}" TextWrapping="Wrap" Margin="0,10,0,0" />
+                    <TextBlock Text="{loc:Str Help_Safety2}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    <TextBlock Text="{loc:Str Help_Safety3}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    <TextBlock Text="{loc:Str Help_Safety4}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                    <TextBlock Text="{loc:Str Help_Safety5}" TextWrapping="Wrap" Margin="0,6,0,0" />
+                </StackPanel>
+            </Border>
+
+            <Border Style="{StaticResource Card}" Margin="0,14,0,14">
+                <StackPanel>
+                    <TextBlock Text="{loc:Str Help_Logs}" TextWrapping="Wrap" Style="{StaticResource Text.Muted}" />
+                    <StackPanel Orientation="Horizontal" Margin="0,12,0,0">
+                        <Button Style="{StaticResource Btn.Secondary}" Margin="0,0,8,0"
+                                Command="{Binding OpenLogsCommand}" Content="{loc:Str Settings_LogsDirectory}" />
+                        <Button Style="{StaticResource Btn.Secondary}" Margin="0,0,8,0"
+                                Command="{Binding OpenReportsCommand}" Content="{loc:Str Settings_ReportsDirectory}" />
+                        <Button Style="{StaticResource Btn.Ghost}"
+                                Command="{Binding OpenAppDataCommand}" Content="{loc:Str Settings_Paths}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

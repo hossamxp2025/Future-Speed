@@ -1,0 +1,98 @@
+<UserControl x:Class="FutureSpeed.App.Views.SyncView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:FutureSpeed.App.Localization"
+             xmlns:vm="clr-namespace:FutureSpeed.App.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:SyncViewModel}">
+
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+            <TextBlock Text="{loc:Str Sync_Title}" Style="{StaticResource Text.H1}" Margin="0,0,0,14" />
+
+            <Border Style="{StaticResource Card}">
+                <StackPanel>
+                    <TextBlock Text="{loc:Str Sync_Left}" Style="{StaticResource Text.Muted}" />
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Text="{Binding LeftFolder, UpdateSourceTrigger=PropertyChanged}" />
+                        <Button Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource Btn.Secondary}"
+                                Command="{Binding BrowseLeftCommand}" Content="{loc:Str Common_Browse}" />
+                    </Grid>
+
+                    <TextBlock Text="{loc:Str Sync_Right}" Style="{StaticResource Text.Muted}" Margin="0,12,0,0" />
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Grid.Column="0" Text="{Binding RightFolder, UpdateSourceTrigger=PropertyChanged}" />
+                        <Button Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource Btn.Secondary}"
+                                Command="{Binding BrowseRightCommand}" Content="{loc:Str Common_Browse}" />
+                    </Grid>
+
+                    <Border Style="{StaticResource Separator.H}" />
+
+                    <TextBlock Text="{loc:Str Sync_Direction}" Style="{StaticResource Text.H3}" />
+                    <StackPanel Margin="0,8,0,0">
+                        <RadioButton GroupName="Dir" Content="{loc:Str Sync_Dir_OneWay}"
+                                     IsChecked="{Binding Direction, Converter={StaticResource EnumEquals}, ConverterParameter=OneWay}" />
+                        <RadioButton GroupName="Dir" Content="{loc:Str Sync_Dir_TwoWay}"
+                                     IsChecked="{Binding Direction, Converter={StaticResource EnumEquals}, ConverterParameter=TwoWay}" />
+                        <RadioButton GroupName="Dir" Content="{loc:Str Sync_Dir_Mirror}"
+                                     IsChecked="{Binding Direction, Converter={StaticResource EnumEquals}, ConverterParameter=Mirror}" />
+                    </StackPanel>
+
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+                        <Button Style="{StaticResource Btn.Secondary}" Margin="0,0,8,0"
+                                Command="{Binding AnalyzeCommand}" Content="{loc:Str Sync_Analyze}" />
+                        <Button Style="{StaticResource Btn.Primary}" MinWidth="150"
+                                IsEnabled="{Binding HasPlan}"
+                                Command="{Binding RunCommand}" Content="{loc:Str Sync_Run}" />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- plan -->
+            <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <StackPanel>
+                    <TextBlock Text="{loc:Str Sync_FilesToCopy}" Style="{StaticResource Text.H2}" />
+
+                    <TextBlock Text="{Binding StatusMessage}" Style="{StaticResource Text.Muted}" Margin="0,8,0,0"
+                               Visibility="{Binding StatusMessage, Converter={StaticResource HasValue}}" />
+
+                    <Grid Margin="0,12,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="{loc:Str Sync_FilesToCopy}" Style="{StaticResource Text.Muted}" />
+                            <TextBlock Text="{Binding FilesToCopy}" Style="{StaticResource Text.Metric}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Text="{loc:Str Progress_TotalSize}" Style="{StaticResource Text.Muted}" />
+                            <TextBlock Text="{Binding BytesToCopy, Converter={StaticResource Size}}" Style="{StaticResource Text.Metric}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="2">
+                            <TextBlock Text="{loc:Str Sync_ExtraFiles}" Style="{StaticResource Text.Muted}" />
+                            <TextBlock Text="{Binding ExtraFiles}" Style="{StaticResource Text.Metric}" />
+                        </StackPanel>
+                    </Grid>
+
+                    <Button Style="{StaticResource Btn.Danger}" HorizontalAlignment="Left" Margin="0,14,0,0"
+                            Visibility="{Binding HasExtras, Converter={StaticResource HasValue}}"
+                            Command="{Binding DeleteExtrasCommand}"
+                            Content="{loc:Str Sync_DeleteExtras}" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

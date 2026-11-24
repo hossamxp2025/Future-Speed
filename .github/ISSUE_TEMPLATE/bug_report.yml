@@ -1,0 +1,69 @@
+name: الإبلاغ عن خلل / Bug report
+description: خلل في النقل أو الواجهة أو التكامل مع مستكشف الملفات
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        شكراً للإبلاغ. لا ترفق مسارات أو أسماء ملفات تعتبرها خاصة.
+
+  - type: input
+    id: version
+    attributes:
+      label: إصدار Future Speed
+      placeholder: "1.1.0"
+    validations:
+      required: true
+
+  - type: input
+    id: windows
+    attributes:
+      label: إصدار ويندوز
+      placeholder: "Windows 11 23H2"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: أين حدث الخلل؟
+      options:
+        - نقل أو نسخ ملفات
+        - نافذة النقل المصغرة
+        - تكامل مستكشف الملفات
+        - المزامنة أو النسخ الاحتياطي
+        - الإعدادات أو الواجهة
+        - أخرى
+    validations:
+      required: true
+
+  - type: input
+    id: drives
+    attributes:
+      label: نوع قرص المصدر والوجهة
+      placeholder: "NVMe ← USB"
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: خطوات التكرار
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: المتوقع وما حدث فعلاً
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: آخر أسطر السجل
+      description: من آخر ملف في %APPDATA%\FutureSpeed\logs
+      render: text

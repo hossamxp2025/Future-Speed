@@ -1,0 +1,41 @@
+# ---------------------------------------------------------------------------
+# Future Speed File Transfer — .gitignore
+# ---------------------------------------------------------------------------
+
+# build output
+bin/
+obj/
+artifacts/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+
+# NOTE: Assets/FutureSpeed.ico is intentionally committed.
+# The .csproj needs it at build time (<ApplicationIcon>), so a fresh clone must
+# build without running any script first. Regenerate it with build/make-icon.ps1.
+
+# IDE / editor
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+*.userprefs
+*.DotSettings.user
+
+# test and runtime leftovers
+TestResults/
+coverage*.xml
+*.coverage
+*.trx
+*.fspart
+
+# local tooling
+.claude/
+*.log
+
+# OS noise
+Thumbs.db
+desktop.ini
+.DS_Store

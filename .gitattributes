@@ -1,0 +1,27 @@
+# Normalise line endings: the repo stores LF, Windows checkouts get CRLF.
+* text=auto
+
+# Files that must keep CRLF on disk for Windows tooling.
+*.ps1    text eol=crlf
+*.cmd    text eol=crlf
+*.bat    text eol=crlf
+*.sln    text eol=crlf
+*.iss    text eol=crlf working-tree-encoding=UTF-8
+
+# Source and markup.
+*.cs     text diff=csharp
+*.xaml   text
+*.csproj text
+*.props  text
+*.md     text
+*.json   text
+*.yml    text
+
+# Binary assets.
+*.png    binary
+*.ico    binary
+*.exe    binary
+*.pdf    binary
+
+# Keep generated/vendored noise out of language statistics and diffs.
+docs/images/* linguist-documentation

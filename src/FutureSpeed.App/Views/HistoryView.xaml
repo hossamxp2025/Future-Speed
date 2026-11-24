@@ -1,0 +1,187 @@
+<UserControl x:Class="FutureSpeed.App.Views.HistoryView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:FutureSpeed.App.Localization"
+             xmlns:vm="clr-namespace:FutureSpeed.App.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:HistoryViewModel}">
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- header -->
+        <Grid Grid.Row="0" Margin="0,0,0,14">
+            <TextBlock Text="{loc:Str History_Title}" Style="{StaticResource Text.H1}" />
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                <ComboBox Width="120" Margin="0,0,8,0"
+                          ItemsSource="{Binding ReportFormats}"
+                          SelectedItem="{Binding ReportFormat}" />
+                <Button Style="{StaticResource Btn.Secondary}"
+                        Command="{Binding OpenReportsFolderCommand}"
+                        Content="{loc:Str History_OpenReportsFolder}" />
+            </StackPanel>
+        </Grid>
+
+        <!-- resumable -->
+        <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,0,0,14"
+                BorderBrush="{DynamicResource Brush.Warning}"
+                Visibility="{Binding HasResumable, Converter={StaticResource HasValue}}">
+            <StackPanel>
+                <TextBlock Text="{loc:Str History_Resumable}" Style="{StaticResource Text.H2}" />
+                <TextBlock Text="{loc:Str History_ResumeQuestion}" Style="{StaticResource Text.Muted}" Margin="0,6,0,0" />
+
+                <ItemsControl ItemsSource="{Binding Resumable}" Margin="0,10,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border Style="{StaticResource CardAlt}" Padding="12" Margin="0,0,0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="{Binding Name}" Style="{StaticResource Text.H3}" />
+                                        <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding DestinationRoot}" />
+                                        <TextBlock Style="{StaticResource Text.Muted}">
+                                            <Run Text="{Binding CompletedRelativePaths.Count, Mode=OneWay}" />
+                                            <Run Text=" / " />
+                                            <Run Text="{Binding TotalFiles, Mode=OneWay}" />
+                                            <Run Text="  ·  " />
+                                            <Run Text="{Binding UpdatedAt, StringFormat={}{0:yyyy-MM-dd HH:mm}, Mode=OneWay}" />
+                                        </TextBlock>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <Button Style="{StaticResource Btn.Primary}" Margin="0,0,8,0"
+                                                Content="{loc:Str History_Resume}"
+                                                Command="{Binding DataContext.ResumeCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}" />
+                                        <Button Style="{StaticResource Btn.Secondary}"
+                                                Content="{loc:Str History_Discard}"
+                                                Command="{Binding DataContext.DiscardCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
+        </Border>
+
+        <!-- empty -->
+        <Border Grid.Row="2" Style="{StaticResource CardAlt}" VerticalAlignment="Top"
+                Visibility="{Binding IsEmpty, Converter={StaticResource HasValue}}">
+            <TextBlock Text="{loc:Str History_Empty}" Style="{StaticResource Text.Muted}" TextAlignment="Center" />
+        </Border>
+
+        <!-- entries -->
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Auto"
+                      Visibility="{Binding IsEmpty, Converter={StaticResource HasValue}, ConverterParameter=invert}">
+            <ItemsControl ItemsSource="{Binding Entries}">
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type vm:HistoryEntryViewModel}">
+                        <Border Style="{StaticResource Card}" Margin="0,0,0,12">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="{Binding Name}" Style="{StaticResource Text.H3}" />
+                                        <StackPanel Orientation="Horizontal" Margin="0,4,0,0">
+                                            <Border Style="{StaticResource Badge}">
+                                                <TextBlock FontSize="11" Foreground="{DynamicResource Brush.Accent}"
+                                                           Text="{Binding State, Converter={StaticResource EnumLabel}, ConverterParameter=State_}" />
+                                            </Border>
+                                            <TextBlock Style="{StaticResource Text.Muted}" Margin="8,0,0,0"
+                                                       Text="{Binding Finished, StringFormat={}{0:yyyy-MM-dd HH:mm}}" />
+                                        </StackPanel>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                                        <Button Style="{StaticResource Btn.Secondary}" Margin="0,0,8,0"
+                                                Content="{loc:Str History_SaveReport}"
+                                                Command="{Binding DataContext.SaveReportCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}" />
+                                        <Button Style="{StaticResource Btn.Ghost}"
+                                                Content="&#xE8B7;" FontFamily="Segoe MDL2 Assets"
+                                                ToolTip="{loc:Str Common_OpenFolder}"
+                                                Command="{Binding DataContext.OpenDestinationCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                CommandParameter="{Binding}" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <Grid Margin="0,12,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Text="{loc:Str Progress_Transferred}" Style="{StaticResource Text.Muted}" />
+                                        <TextBlock Text="{Binding TransferredBytes, Converter={StaticResource Size}}" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="{loc:Str Progress_AverageSpeed}" Style="{StaticResource Text.Muted}" />
+                                        <TextBlock Text="{Binding AverageSpeed, Converter={StaticResource Speed}}" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Text="{loc:Str Progress_Elapsed}" Style="{StaticResource Text.Muted}" />
+                                        <TextBlock Text="{Binding Duration, Converter={StaticResource Duration}}" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="3">
+                                        <TextBlock Text="{loc:Str Progress_FilesDone}" Style="{StaticResource Text.Muted}" />
+                                        <TextBlock FontWeight="SemiBold">
+                                            <Run Text="{Binding CopiedFiles, Mode=OneWay}" />
+                                            <Run Text=" / " />
+                                            <Run Text="{Binding SkippedFiles, Mode=OneWay}" />
+                                            <Run Text=" / " />
+                                            <Run Text="{Binding FailedFiles, Mode=OneWay}" />
+                                        </TextBlock>
+                                    </StackPanel>
+                                </Grid>
+
+                                <TextBlock Style="{StaticResource Text.Mono}" Margin="0,10,0,0"
+                                           Text="{Binding ReportPath}"
+                                           Visibility="{Binding ReportPath, Converter={StaticResource HasValue}}" />
+
+                                <!-- problems -->
+                                <Expander Margin="0,10,0,0"
+                                          Header="{loc:Str History_Errors}"
+                                          Foreground="{DynamicResource Brush.Text}"
+                                          Visibility="{Binding Problems, Converter={StaticResource HasValue}}">
+                                    <ItemsControl ItemsSource="{Binding Problems}" Margin="0,8,0,0">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="0,0,0,6">
+                                                    <TextBlock Style="{StaticResource Text.Mono}" Text="{Binding RelativePath}" />
+                                                    <TextBlock Style="{StaticResource Text.Muted}">
+                                                        <Run Text="{Binding Outcome, Converter={StaticResource EnumLabel}, ConverterParameter=Outcome_, Mode=OneWay}" />
+                                                        <Run Text="  " />
+                                                        <Run Text="{Binding Error, Mode=OneWay}" />
+                                                    </TextBlock>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </Expander>
+                            </StackPanel>
+                        </Border>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+        </ScrollViewer>
+    </Grid>
+</UserControl>

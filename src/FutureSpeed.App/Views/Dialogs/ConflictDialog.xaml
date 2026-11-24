@@ -1,0 +1,56 @@
+<Window x:Class="FutureSpeed.App.Views.Dialogs.ConflictDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:FutureSpeed.App.Localization"
+        Title="{loc:Str Conflict_Title}"
+        Width="620" SizeToContent="Height"
+        MinHeight="320"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        ShowInTaskbar="False"
+        Background="{DynamicResource Brush.Bg}">
+
+    <StackPanel Margin="22">
+        <TextBlock Text="{loc:Str Conflict_Title}" Style="{StaticResource Text.H1}" />
+        <TextBlock Text="{loc:Str Conflict_Message}" Style="{StaticResource Text.Muted}" Margin="0,6,0,0" />
+
+        <TextBlock x:Name="FileNameText" Style="{StaticResource Text.H3}" Margin="0,14,0,0" TextTrimming="CharacterEllipsis" />
+        <TextBlock x:Name="HintText" Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
+
+        <Grid Margin="0,14,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border Grid.Column="0" Style="{StaticResource CardAlt}" Margin="0,0,7,0">
+                <StackPanel>
+                    <TextBlock Text="{loc:Str Conflict_SourceFile}" Style="{StaticResource Text.Muted}" />
+                    <TextBlock x:Name="SourceSizeText" Style="{StaticResource Text.H3}" Margin="0,6,0,0" />
+                    <TextBlock x:Name="SourceDateText" Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
+                </StackPanel>
+            </Border>
+
+            <Border Grid.Column="1" Style="{StaticResource CardAlt}" Margin="7,0,0,0">
+                <StackPanel>
+                    <TextBlock Text="{loc:Str Conflict_DestinationFile}" Style="{StaticResource Text.Muted}" />
+                    <TextBlock x:Name="DestinationSizeText" Style="{StaticResource Text.H3}" Margin="0,6,0,0" />
+                    <TextBlock x:Name="DestinationDateText" Style="{StaticResource Text.Muted}" Margin="0,4,0,0" />
+                </StackPanel>
+            </Border>
+        </Grid>
+
+        <CheckBox x:Name="ApplyAllCheck" Content="{loc:Str Conflict_ApplyToAll}" Margin="0,16,0,0" />
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0">
+            <Button Style="{StaticResource Btn.Ghost}" Margin="0,0,8,0"
+                    Content="{loc:Str Common_Cancel}" Click="OnCancel" />
+            <Button Style="{StaticResource Btn.Secondary}" Margin="0,0,8,0"
+                    Content="{loc:Str Conflict_Skip}" Click="OnSkip" />
+            <Button Style="{StaticResource Btn.Secondary}" Margin="0,0,8,0"
+                    Content="{loc:Str Conflict_Rename}" Click="OnRename" />
+            <Button Style="{StaticResource Btn.Primary}" MinWidth="120"
+                    Content="{loc:Str Conflict_Overwrite}" Click="OnOverwrite" />
+        </StackPanel>
+    </StackPanel>
+</Window>
