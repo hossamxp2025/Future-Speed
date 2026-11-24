@@ -216,6 +216,29 @@ artifacts\installer\FutureSpeed-1.1.0-Setup.exe
 & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" installer\FutureSpeed.iss
 ```
 
+### إصدار تحديث جديد على GitHub
+
+المشروع يضم Workflow في `.github/workflows/release.yml`. عند رفع Tag بالشكل `vX.Y.Z`
+يشغّل GitHub البناء والاختبارات، ثم ينشئ Release تلقائياً ويُرفق به:
+
+- ملف التثبيت `FutureSpeed-X.Y.Z-Setup.exe`.
+- نسخة محمولة `FutureSpeed-X.Y.Z-win-x64-portable.zip`.
+- ملف البصمات `SHA256SUMS.txt`.
+- بيان تحديث ثابت الاسم `latest.json` يمكن للبرنامج أو أي أداة تحديث قراءته من:
+  `https://github.com/hossamxp2025/Future-Speed/releases/latest/download/latest.json`.
+
+لإصدار نسخة جديدة، حدّث رقم النسخة ثم راجع `CHANGELOG.md`:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File build\new-release.ps1 -Version 1.2.0
+git add Directory.Build.props installer/FutureSpeed.iss CHANGELOG.md
+git commit -m "Release Future Speed 1.2.0"
+git tag v1.2.0
+git push origin main v1.2.0
+```
+
+لا تُرفع مجلدات `artifacts` إلى Git؛ ملفات التنزيل تُحفظ داخل صفحة **Releases**.
+
 ---
 
 ## 4. الخصائص المنفَّذة

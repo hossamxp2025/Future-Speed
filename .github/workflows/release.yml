@@ -1,0 +1,124 @@
+name: release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-test-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out the tagged source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Verify that the tag matches the source version
+        shell: pwsh
+        run: |
+          $tag = '${{ github.ref_name }}'
+          $version = $tag -replace '^v', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+$') {
+            throw "Release tags must look like v1.2.3; received '$tag'."
+          }
+          [xml]$props = Get-Content 'Directory.Build.props'
+          $sourceVersion = [string]$props.Project.PropertyGroup.Version
+          $issText = Get-Content 'installer/FutureSpeed.iss' -Raw
+          $issMatch = [regex]::Match($issText, '#define\s+AppVersion\s+"([^"]+)"')
+          if (-not $issMatch.Success) { throw 'Could not read AppVersion from installer/FutureSpeed.iss.' }
+          $installerVersion = $issMatch.Groups[1].Value
+
+          if ($sourceVersion -ne $version -or $installerVersion -ne $version) {
+            throw "Tag $tag does not match source version $sourceVersion and installer version $installerVersion."
+          }
+
+          "RELEASE_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Restore
+        run: dotnet restore FutureSpeed.sln
+
+      - name: Build (Release, warnings are failures)
+        run: dotnet build FutureSpeed.sln -c Release --no-restore -warnaserror
+
+      - name: Test
+        run: dotnet test FutureSpeed.sln -c Release --no-build --verbosity normal
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          $compiler = @(
+            "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe",
+            "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          ) | Where-Object { Test-Path $_ } | Select-Object -First 1
+
+          if (-not $compiler) {
+            choco install innosetup --yes --no-progress
+          }
+
+      - name: Build the installer
+        shell: pwsh
+        run: powershell -ExecutionPolicy Bypass -File build/make-installer.ps1
+
+      - name: Create portable package, checksums, and update manifest
+        shell: pwsh
+        run: |
+          $version = $env:RELEASE_VERSION
+          $tag = '${{ github.ref_name }}'
+          $installer = "artifacts/installer/FutureSpeed-$version-Setup.exe"
+          $portable = "artifacts/installer/FutureSpeed-$version-win-x64-portable.zip"
+          $checksums = 'artifacts/installer/SHA256SUMS.txt'
+          $manifest = 'artifacts/installer/latest.json'
+
+          if (-not (Test-Path $installer)) { throw "Installer not found: $installer" }
+          Compress-Archive -Path 'artifacts/publish/win-x64/*' -DestinationPath $portable -CompressionLevel Optimal -Force
+
+          $installerHash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          $portableHash = (Get-FileHash $portable -Algorithm SHA256).Hash.ToLowerInvariant()
+          @(
+            "$installerHash  $(Split-Path $installer -Leaf)",
+            "$portableHash  $(Split-Path $portable -Leaf)"
+          ) | Set-Content $checksums -Encoding ascii
+
+          [ordered]@{
+            version = $version
+            tag = $tag
+            publishedAt = (Get-Date).ToUniversalTime().ToString('o')
+            installerUrl = "https://github.com/${{ github.repository }}/releases/download/$tag/$(Split-Path $installer -Leaf)"
+            installerSha256 = $installerHash
+            portableUrl = "https://github.com/${{ github.repository }}/releases/download/$tag/$(Split-Path $portable -Leaf)"
+            portableSha256 = $portableHash
+          } | ConvertTo-Json | Set-Content $manifest -Encoding utf8
+
+      - name: Create or update the GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = '${{ github.ref_name }}'
+          $version = $env:RELEASE_VERSION
+          $assets = @(
+            "artifacts/installer/FutureSpeed-$version-Setup.exe",
+            "artifacts/installer/FutureSpeed-$version-win-x64-portable.zip",
+            'artifacts/installer/SHA256SUMS.txt',
+            'artifacts/installer/latest.json'
+          )
+
+          gh release view $tag --repo '${{ github.repository }}' *> $null
+          if ($LASTEXITCODE -eq 0) {
+            gh release upload $tag @assets --clobber --repo '${{ github.repository }}'
+          } else {
+            gh release create $tag @assets `
+              --repo '${{ github.repository }}' `
+              --verify-tag `
+              --title "Future Speed $version" `
+              --generate-notes
+          }
+
