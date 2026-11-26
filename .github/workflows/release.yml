@@ -24,7 +24,7 @@ jobs:
       - name: Verify that the tag matches the source version
         shell: pwsh
         run: |
-          $tag = '${{ github.ref_name }}'
+          $tag = $env:GITHUB_REF_NAME
           $version = $tag -replace '^v', ''
           if ($version -notmatch '^\d+\.\d+\.\d+$') {
             throw "Release tags must look like v1.2.3; received '$tag'."
@@ -71,7 +71,7 @@ jobs:
         shell: pwsh
         run: |
           $version = $env:RELEASE_VERSION
-          $tag = '${{ github.ref_name }}'
+          $tag = $env:GITHUB_REF_NAME
           $installer = "artifacts/installer/FutureSpeed-$version-Setup.exe"
           $portable = "artifacts/installer/FutureSpeed-$version-win-x64-portable.zip"
           $checksums = 'artifacts/installer/SHA256SUMS.txt'
@@ -91,9 +91,9 @@ jobs:
             version = $version
             tag = $tag
             publishedAt = (Get-Date).ToUniversalTime().ToString('o')
-            installerUrl = "https://github.com/${{ github.repository }}/releases/download/$tag/$(Split-Path $installer -Leaf)"
+            installerUrl = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$tag/$(Split-Path $installer -Leaf)"
             installerSha256 = $installerHash
-            portableUrl = "https://github.com/${{ github.repository }}/releases/download/$tag/$(Split-Path $portable -Leaf)"
+            portableUrl = "https://github.com/$env:GITHUB_REPOSITORY/releases/download/$tag/$(Split-Path $portable -Leaf)"
             portableSha256 = $portableHash
           } | ConvertTo-Json | Set-Content $manifest -Encoding utf8
 
@@ -102,7 +102,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          $tag = '${{ github.ref_name }}'
+          $tag = $env:GITHUB_REF_NAME
           $version = $env:RELEASE_VERSION
           $assets = @(
             "artifacts/installer/FutureSpeed-$version-Setup.exe",
@@ -111,14 +111,19 @@ jobs:
             'artifacts/installer/latest.json'
           )
 
-          gh release view $tag --repo '${{ github.repository }}' *> $null
+          gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -eq 0) {
-            gh release upload $tag @assets --clobber --repo '${{ github.repository }}'
+            throw "Release $tag already exists. Use a new version for a new build."
           } else {
+            $notesPath = "docs/release-$tag.md"
+            $notes = @('--generate-notes')
+            if (Test-Path -LiteralPath $notesPath -PathType Leaf) {
+              $notes = @('--notes-file', $notesPath)
+            }
             gh release create $tag @assets `
-              --repo '${{ github.repository }}' `
+              --repo $env:GITHUB_REPOSITORY `
               --verify-tag `
               --title "Future Speed $version" `
-              --generate-notes
+              @notes
           }
 

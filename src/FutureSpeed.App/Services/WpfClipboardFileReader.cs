@@ -1,4 +1,5 @@
-using System.IO;
+﻿using System.IO;
+using System.Runtime.InteropServices;
 using System.Windows;
 using FutureSpeed.Core.Integration;
 using Microsoft.Extensions.Logging;
@@ -65,8 +66,23 @@ public sealed class WpfClipboardFileReader : IClipboardFileReader
 
             data.SetData(PreferredDropEffect, new MemoryStream(BitConverter.GetBytes(effect)));
 
-            Clipboard.SetDataObject(data, copy: true);
-            return true;
+            // Only one process may own the clipboard at a time, and Explorer or another app
+            // can hold it for a moment, so a single failed attempt means nothing.
+            // (WPF's Clipboard has no retry overload; WinForms' does.)
+            for (var attempt = 1; attempt <= 10; attempt++)
+            {
+                try
+                {
+                    Clipboard.SetDataObject(data, copy: true);
+                    return true;
+                }
+                catch (COMException) when (attempt < 10)
+                {
+                    Thread.Sleep(120);
+                }
+            }
+
+            return false;
         }
         catch (Exception ex)
         {

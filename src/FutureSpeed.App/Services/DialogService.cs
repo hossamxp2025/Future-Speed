@@ -27,6 +27,12 @@ public interface IDialogService
     bool ShowSpaceProblem(SpaceValidationResult validation);
 
     void OpenInExplorer(string path);
+
+    /// <summary>Opens a file with whatever Windows associates with it (used for the HTML report).</summary>
+    void OpenFile(string path);
+
+    /// <summary>Puts plain text on the clipboard; false when Windows would not give it up.</summary>
+    bool CopyText(string text);
 }
 
 public sealed class DialogService : IDialogService
@@ -125,5 +131,47 @@ public sealed class DialogService : IDialogService
         {
             _logger.LogWarning(ex, "Could not open {Path} in Explorer.", path);
         }
+    }
+
+    public void OpenFile(string path)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+
+            // UseShellExecute: the report is HTML, so the user's browser handles it.
+            Process.Start(new ProcessStartInfo(path) { UseShellExecute = true });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Could not open the file {Path}.", path);
+        }
+    }
+
+    public bool CopyText(string text)
+    {
+        if (string.IsNullOrEmpty(text)) return false;
+
+        // Only one process owns the clipboard at a time, so one refusal means nothing.
+        for (var attempt = 1; attempt <= 5; attempt++)
+        {
+            try
+            {
+                Clipboard.SetText(text);
+                return true;
+            }
+            catch (Exception ex) when (attempt < 5)
+            {
+                _logger.LogDebug(ex, "Clipboard busy, attempt {Attempt}.", attempt);
+                Thread.Sleep(100);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not copy the text to the clipboard.");
+                return false;
+            }
+        }
+
+        return false;
     }
 }

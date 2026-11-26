@@ -16,4 +16,8 @@ public sealed class ScanResult
     public bool IsTotalExact => Problems.Count == 0;
 }
 
-public sealed record ScanProblem(string Path, string Reason);
+/// <summary>A source path that could not even be enumerated, so it was never offered to the copy phase.</summary>
+/// <param name="Path">The full path that failed.</param>
+/// <param name="Reason">The message from the file system.</param>
+/// <param name="Kind">Stable cause code, so the UI and the report treat it like any other failure.</param>
+public sealed record ScanProblem(string Path, string Reason, FailureReason Kind = FailureReason.Unknown);

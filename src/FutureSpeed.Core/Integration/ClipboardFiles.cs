@@ -35,6 +35,75 @@ public interface IClipboardFileReader
 }
 
 /// <summary>
+/// Collects selections that arrive from several Explorer launches at once and merges them
+/// into a single clipboard write.
+///
+/// Why: Explorer does not always honour MultiSelectModel=Player — with a large selection it
+/// can start one process per item. Each of those would fight for the clipboard (only one
+/// process may own it) and most would fail. Buffering turns N launches into one write.
+/// </summary>
+public sealed class ClipboardStagingBuffer
+{
+    private readonly object _gate = new();
+    private readonly List<string> _paths = new();
+    private ClipboardOperation _operation = ClipboardOperation.None;
+
+    public bool HasPending
+    {
+        get { lock (_gate) return _paths.Count > 0; }
+    }
+
+    public int PendingCount
+    {
+        get { lock (_gate) return _paths.Count; }
+    }
+
+    public void Add(IEnumerable<string>? paths, ClipboardOperation operation)
+    {
+        if (paths is null) return;
+
+        lock (_gate)
+        {
+            foreach (var path in paths)
+            {
+                if (string.IsNullOrWhiteSpace(path)) continue;
+                _paths.Add(PathUtils.Normalize(path));
+            }
+
+            // A cut wins over a copy: dropping the move would silently leave the originals
+            // behind, which is the more surprising outcome.
+            if (operation == ClipboardOperation.Move || _operation == ClipboardOperation.None)
+                _operation = operation;
+        }
+    }
+
+    /// <summary>Returns the merged, de-duplicated selection and empties the buffer.</summary>
+    public ClipboardFilePayload TakeAll()
+    {
+        lock (_gate)
+        {
+            if (_paths.Count == 0 || _operation == ClipboardOperation.None)
+            {
+                _paths.Clear();
+                _operation = ClipboardOperation.None;
+                return ClipboardFilePayload.Empty;
+            }
+
+            var files = _paths
+                .Where(p => p.Length > 0)
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var payload = new ClipboardFilePayload(_operation, files);
+
+            _paths.Clear();
+            _operation = ClipboardOperation.None;
+            return payload;
+        }
+    }
+}
+
+/// <summary>
 /// Turns a raw clipboard reading into a validated payload. Kept free of Windows APIs so
 /// the rules (ignore non-file clipboards, drop missing paths, de-duplicate) are testable.
 /// </summary>

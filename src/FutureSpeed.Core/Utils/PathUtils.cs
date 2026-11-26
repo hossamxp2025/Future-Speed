@@ -40,6 +40,20 @@ public static class PathUtils
         return path;
     }
 
+    /// <summary>
+    /// Strips the extended-length prefixes out of a message before it reaches the user. The engine uses
+    /// extended paths internally, and Windows echoes them back inside exception messages,
+    /// where they only confuse the reader.
+    /// </summary>
+    public static string Readable(string? text)
+    {
+        if (string.IsNullOrEmpty(text)) return string.Empty;
+
+        return text
+            .Replace(ExtendedUncPrefix, @"\\", StringComparison.Ordinal)
+            .Replace(ExtendedPrefix, string.Empty, StringComparison.Ordinal);
+    }
+
     /// <summary>Normalizes for comparison: full path, no trailing separator, case-insensitive ready.</summary>
     public static string Normalize(string path)
     {

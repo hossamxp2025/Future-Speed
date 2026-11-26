@@ -7,6 +7,7 @@ using FutureSpeed.App.ViewModels;
 using FutureSpeed.App.Views;
 using FutureSpeed.Core.Abstractions;
 using FutureSpeed.Core.Integration;
+using FutureSpeed.Core.Models;
 using FutureSpeed.Core.Services;
 using FutureSpeed.Core.Transfer;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +23,10 @@ public partial class App : Application
     private ILogger<App>? _logger;
     private Mutex? _singleInstance;
     private TransferRequestServer? _ipcServer;
+    private readonly ClipboardStagingBuffer _staging = new();
+    private DispatcherTimer? _stagingTimer;
+    private string? _lastReportedMessage;
+    private DateTimeOffset _lastReportedAt;
 
     public static IServiceProvider Services =>
         (Current as App)?._services ?? throw new InvalidOperationException("Services are not ready yet.");
@@ -63,22 +68,28 @@ public partial class App : Application
             return;
         }
 
-        // ---- "Copy/Move with Future Speed": stage the selection, no window ------
-        // The verb has no destination yet: it marks the files, exactly like Explorer's
-        // own Copy/Cut, and the paste verb does the work.
-        if (options.Action is CommandLineAction.Copy or CommandLineAction.Move &&
-            string.IsNullOrWhiteSpace(options.Destination))
-        {
-            StageSelection(options);
-            Shutdown();
-            return;
-        }
-
         // ---- single instance ---------------------------------------------------
+        // Staging goes through the same channel: Explorer may start one process per
+        // selected item, and they must end up as ONE clipboard write, not N.
         if (!TryBecomeHost(options))
             return;
 
         StartIpcServer();
+
+        // Any job that ends with failed files leaves a readable report behind, even when
+        // the main window (and with it the history page) is never created.
+        _services.GetRequiredService<JobCompletionReporter>().Start();
+
+        // ---- "Copy/Move with Future Speed": stage the selection, no window ------
+        // The verb carries no destination: it marks the files exactly like Explorer's
+        // own Copy/Cut, and the paste verb does the work.
+        if (IsStagingRequest(options))
+        {
+            QueueStaging(options.Sources, options.Action == CommandLineAction.Move
+                ? ClipboardOperation.Move
+                : ClipboardOperation.Copy);
+            return;
+        }
 
         // ---- a request from Explorer opens the compact window only -------------
         if (options.IsTransfer)
@@ -136,8 +147,22 @@ public partial class App : Application
     }
 
 
+    private static bool IsStagingRequest(CommandLineOptions options)
+        => options.Action is CommandLineAction.Copy or CommandLineAction.Move &&
+           string.IsNullOrWhiteSpace(options.Destination);
+
     private TransferRequest BuildRequest(CommandLineOptions options)
     {
+        if (IsStagingRequest(options))
+        {
+            return new TransferRequest
+            {
+                StageOnly = true,
+                Mode = options.Mode,
+                Sources = options.Sources.ToList()
+            };
+        }
+
         if (!options.IsTransfer)
             return new TransferRequest { ActivateMainWindow = true };
 
@@ -170,6 +195,14 @@ public partial class App : Application
         if (request.ActivateMainWindow)
         {
             ShowMainWindow();
+            return;
+        }
+
+        if (request.StageOnly)
+        {
+            QueueStaging(
+                request.Sources,
+                request.Mode == TransferMode.Move ? ClipboardOperation.Move : ClipboardOperation.Copy);
             return;
         }
 
@@ -225,16 +258,34 @@ public partial class App : Application
         return true;
     }
 
-    /// <summary>An ignored clipboard is information, a rejected request is an error.</summary>
+    /// <summary>
+    /// Reports a rejected request that came from outside the app (an Explorer verb or a
+    /// second launch).
+    ///
+    /// Never a modal dialog: Explorer can fire a verb once per selected item, and one
+    /// modal per request stacks dozens of windows over the user's screen. The same text
+    /// is also suppressed for a few seconds so a burst produces one message.
+    /// </summary>
     private void Report(SubmitResult result)
     {
         if (_services is null) return;
 
-        var dialogs = _services.GetRequiredService<IDialogService>();
         var message = result.Error ?? string.Empty;
+        if (message.Length == 0) return;
 
-        if (result.Informational) dialogs.Info(message);
-        else dialogs.Error(message);
+        var now = DateTimeOffset.UtcNow;
+        if (string.Equals(message, _lastReportedMessage, StringComparison.Ordinal) &&
+            now - _lastReportedAt < TimeSpan.FromSeconds(5))
+        {
+            _logger?.LogDebug("Suppressed a repeated request error: {Message}", message);
+            return;
+        }
+
+        _lastReportedMessage = message;
+        _lastReportedAt = now;
+
+        _logger?.LogInformation("Request rejected: {Message}", message);
+        _services.GetRequiredService<INotificationService>().NotifyInfo(message);
     }
 
     private void OpenCompactWindow(QueuedJob job)
@@ -258,32 +309,72 @@ public partial class App : Application
     }
 
     /// <summary>
-    /// Puts the Explorer selection on the clipboard with the right drop effect, so either
-    /// "Paste with Future Speed" or Windows' own paste can act on it.
+    /// Collects a selection for the clipboard and (re)starts a short timer. Every launch
+    /// that arrives inside that window is merged, so one selection means one clipboard
+    /// write even when Explorer starts a process per file.
     /// </summary>
-    private void StageSelection(CommandLineOptions options)
+    private void QueueStaging(IEnumerable<string> paths, ClipboardOperation operation)
+    {
+        _staging.Add(paths, operation);
+
+        _stagingTimer ??= new DispatcherTimer(DispatcherPriority.Background)
+        {
+            Interval = TimeSpan.FromMilliseconds(700)
+        };
+
+        _stagingTimer.Tick -= OnStagingTick;
+        _stagingTimer.Tick += OnStagingTick;
+
+        // Restarting the timer keeps the window open while siblings keep arriving.
+        _stagingTimer.Stop();
+        _stagingTimer.Start();
+    }
+
+    private void OnStagingTick(object? sender, EventArgs e)
+    {
+        _stagingTimer?.Stop();
+        FlushStaging();
+    }
+
+    private void FlushStaging()
     {
         if (_services is null) return;
+
+        var payload = _staging.TakeAll();
+        if (!payload.HasFiles)
+        {
+            ExitIfNothingToShow();
+            return;
+        }
 
         var clipboard = _services.GetRequiredService<IClipboardFileReader>();
         var localization = _services.GetRequiredService<ILocalizationService>();
         var notifications = _services.GetRequiredService<INotificationService>();
 
-        var operation = options.Action == CommandLineAction.Move
-            ? ClipboardOperation.Move
-            : ClipboardOperation.Copy;
-
-        if (clipboard.Write(options.Sources, operation))
+        if (clipboard.Write(payload.Files, payload.Operation))
         {
             _logger?.LogInformation(
-                "Staged {Count} item(s) on the clipboard for {Operation}.", options.Sources.Count, operation);
+                "Staged {Count} item(s) on the clipboard for {Operation}.",
+                payload.Files.Count, payload.Operation);
 
-            notifications.NotifyInfo(localization.Format("Integration_Staged", options.Sources.Count));
+            notifications.NotifyInfo(localization.Format("Integration_Staged", payload.Files.Count));
         }
         else
         {
-            _services.GetRequiredService<IDialogService>().Error(localization["Integration_Failed"]);
+            // A clipboard that stays busy is worth a line in the log and a tray message —
+            // never a modal dialog, and never one dialog per launched process.
+            _logger?.LogWarning("Could not place {Count} item(s) on the clipboard.", payload.Files.Count);
+            notifications.NotifyInfo(localization["Integration_StageFailed"]);
         }
+
+        ExitIfNothingToShow();
+    }
+
+    /// <summary>A launch that only staged files leaves no window behind, so it must exit.</summary>
+    private void ExitIfNothingToShow()
+    {
+        if (Windows.Count == 0)
+            Shutdown();
     }
 
     private void RunIntegrationCommand(CommandLineOptions options)
@@ -382,6 +473,8 @@ public partial class App : Application
         services.AddSingleton<IClipboardFileReader, WpfClipboardFileReader>();
         services.AddSingleton<IExplorerIntegrationManager, ExplorerIntegrationManager>();
         services.AddSingleton<ITransferRequestCoordinator, TransferRequestCoordinator>();
+        services.AddSingleton<ITransferReportLauncher, TransferReportLauncher>();
+        services.AddSingleton<JobCompletionReporter>();
 
         // ---- engine ---------------------------------------------------------
         services.AddSingleton<IDriveService>(sp =>
@@ -422,6 +515,10 @@ public partial class App : Application
             sp.GetRequiredService<ILogger<TransferQueue>>()));
 
         // ---- view models ----------------------------------------------------
+        // One failure list per job view, so two jobs never share rows.
+        services.AddTransient<FailureListViewModel>();
+        services.AddSingleton<Func<FailureListViewModel>>(sp => sp.GetRequiredService<FailureListViewModel>);
+
         services.AddSingleton<MainViewModel>();
         services.AddSingleton<DrivesViewModel>();
         services.AddSingleton<NewTransferViewModel>();

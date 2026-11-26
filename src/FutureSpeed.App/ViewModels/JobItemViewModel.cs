@@ -10,13 +10,21 @@ namespace FutureSpeed.App.ViewModels;
 /// </summary>
 public sealed partial class JobItemViewModel : ObservableObject
 {
-    public JobItemViewModel(QueuedJob job)
+    public JobItemViewModel(QueuedJob job, FailureListViewModel? failures = null)
     {
         Queued = job;
+        Failures = failures;
+        Failures?.Track(job);
         Refresh();
     }
 
     public QueuedJob Queued { get; }
+
+    /// <summary>
+    /// The files this job could not transfer, with their full paths and reasons.
+    /// Null only in tests that do not care about failures.
+    /// </summary>
+    public FailureListViewModel? Failures { get; }
 
     public string Id => Queued.Job.Id;
     public string Name => Queued.Job.Name;
@@ -77,6 +85,8 @@ public sealed partial class JobItemViewModel : ObservableObject
         CurrentFileName = snapshot.CurrentFileName;
         CurrentFilePath = snapshot.CurrentFilePath;
         IsVerifying = snapshot.IsVerifying;
+
+        Failures?.Update();
 
         OnPropertyChanged(nameof(IsActive));
         OnPropertyChanged(nameof(IsFinished));

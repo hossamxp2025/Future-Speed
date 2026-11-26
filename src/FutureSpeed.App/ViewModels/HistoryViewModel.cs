@@ -14,11 +14,17 @@ namespace FutureSpeed.App.ViewModels;
 
 public sealed partial class HistoryEntryViewModel : ObservableObject
 {
-    public HistoryEntryViewModel(TransferResult result)
+    public HistoryEntryViewModel(TransferResult result, FailureListViewModel? failures = null)
     {
         Result = result;
         Finished = result.Job.FinishedAt ?? DateTimeOffset.Now;
+
+        Failures = failures;
+        Failures?.Show(result);
     }
+
+    /// <summary>The files that did not transfer, with their full paths and causes.</summary>
+    public FailureListViewModel? Failures { get; }
 
     public TransferResult Result { get; }
     public DateTimeOffset Finished { get; }
@@ -37,10 +43,6 @@ public sealed partial class HistoryEntryViewModel : ObservableObject
 
     public bool HasFailures => FailedFiles > 0;
 
-    public IReadOnlyList<TransferItem> Problems => Result.Items
-        .Where(i => i.Outcome is FileOutcome.Failed or FileOutcome.VerificationFailed or FileOutcome.Skipped)
-        .ToList();
-
     [ObservableProperty]
     private string? _reportPath;
 }
@@ -55,6 +57,9 @@ public sealed partial class HistoryViewModel : ObservableObject
     private readonly IDialogService _dialogs;
     private readonly INotificationService _notifications;
     private readonly ILocalizationService _localization;
+    private readonly ITransferReportLauncher _reportLauncher;
+    private readonly JobCompletionReporter _completionReports;
+    private readonly Func<FailureListViewModel> _failures;
     private readonly ILogger<HistoryViewModel> _logger;
 
     public HistoryViewModel(
@@ -65,6 +70,9 @@ public sealed partial class HistoryViewModel : ObservableObject
         IDialogService dialogs,
         INotificationService notifications,
         ILocalizationService localization,
+        ITransferReportLauncher reportLauncher,
+        JobCompletionReporter completionReports,
+        Func<FailureListViewModel> failures,
         ILogger<HistoryViewModel> logger)
     {
         _queue = queue;
@@ -74,6 +82,9 @@ public sealed partial class HistoryViewModel : ObservableObject
         _dialogs = dialogs;
         _notifications = notifications;
         _localization = localization;
+        _reportLauncher = reportLauncher;
+        _completionReports = completionReports;
+        _failures = failures;
         _logger = logger;
 
         _queue.JobFinished += OnJobFinished;
@@ -152,7 +163,8 @@ public sealed partial class HistoryViewModel : ObservableObject
 
         try
         {
-            var path = await _reports.SaveAsync(entry.Result, ReportFormat, _settings.ReportsDirectory);
+            var path = await _reports.SaveAsync(
+                entry.Result, ReportFormat, _settings.ReportsDirectory, _localization.Culture);
             entry.ReportPath = path;
             _dialogs.Info(_localization.Format("History_ReportSaved", path));
         }
@@ -161,6 +173,18 @@ public sealed partial class HistoryViewModel : ObservableObject
             _logger.LogError(ex, "Could not save the report.");
             _dialogs.Error(ex.Message);
         }
+    }
+
+    /// <summary>Writes the printable report and opens it in the browser.</summary>
+    [RelayCommand]
+    private async Task OpenReportAsync(HistoryEntryViewModel? entry)
+    {
+        entry ??= SelectedEntry;
+        if (entry is null) return;
+
+        var path = await _reportLauncher.OpenAsync(entry.Result);
+        if (path is null) _dialogs.Error(_localization["Fail_ReportFailed"]);
+        else entry.ReportPath = path;
     }
 
     [RelayCommand]
@@ -185,7 +209,7 @@ public sealed partial class HistoryViewModel : ObservableObject
 
             if (queued.Result is not null)
             {
-                var entry = new HistoryEntryViewModel(queued.Result);
+                var entry = new HistoryEntryViewModel(queued.Result, _failures());
                 Entries.Insert(0, entry);
                 OnPropertyChanged(nameof(IsEmpty));
 
@@ -196,12 +220,22 @@ public sealed partial class HistoryViewModel : ObservableObject
                         entry.ReportPath = await _reports.SaveAsync(
                             queued.Result,
                             _settings.Current.DefaultReportFormat,
-                            _settings.ReportsDirectory);
+                            _settings.ReportsDirectory,
+                            _localization.Culture);
                     }
                     catch (Exception ex)
                     {
                         _logger.LogWarning(ex, "Automatic report failed.");
                     }
+                }
+
+                // A run with failures always leaves a readable report behind; it is written
+                // by JobCompletionReporter, so point the entry at that file rather than
+                // writing a second copy of it here.
+                if (queued.Result.FailedFiles > 0)
+                {
+                    var html = await _completionReports.ReportFor(queued.Job.Id);
+                    if (html is not null) entry.ReportPath = html;
                 }
             }
 
@@ -211,7 +245,10 @@ public sealed partial class HistoryViewModel : ObservableObject
             {
                 case JobState.Completed:
                 case JobState.CompletedWithErrors:
-                    _notifications.NotifyCompleted(queued.Job.Name, queued.State == JobState.CompletedWithErrors);
+                    _notifications.NotifyCompleted(
+                        queued.Job.Name,
+                        queued.State == JobState.CompletedWithErrors,
+                        queued.Result?.FailedFiles ?? 0);
                     if (_settings.Current.OpenDestinationWhenFinished)
                         _dialogs.OpenInExplorer(queued.Job.DestinationRoot);
                     break;

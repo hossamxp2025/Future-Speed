@@ -1,4 +1,4 @@
-﻿namespace FutureSpeed.App.Localization;
+﻿﻿namespace FutureSpeed.App.Localization;
 
 /// <summary>
 /// The whole UI vocabulary, in Arabic and English. Kept as code rather than .resx so a
@@ -275,7 +275,7 @@ internal static class Strings
         // --- notifications --------------------------------------------------
         ["Notify_Title"] = "Future Speed",
         ["Notify_Completed"] = "اكتمل النقل: {0}",
-        ["Notify_CompletedWithErrors"] = "اكتمل النقل مع أخطاء: {0}",
+        ["Notify_CompletedWithErrors"] = "اكتمل النقل: {0} — {1} ملف لم يُنقل، التفاصيل في التقرير",
         ["Notify_Failed"] = "فشل النقل: {0}",
         ["Notify_Canceled"] = "تم إلغاء النقل: {0}",
 
@@ -305,6 +305,30 @@ internal static class Strings
         ["Help_Logs"] = "ملفات السجل والتقارير موجودة في مجلد بيانات البرنامج، ويمكن تغيير مكانها من الإعدادات.",
 
         // --- compact transfer window ----------------------------------------
+        // --- failures (files that did not transfer) -------------------------
+        ["Fail_Title"] = "ملفات لم تُنقل",
+        ["Fail_None"] = "لم يفشل أي ملف في هذه العملية.",
+        ["Fail_Count"] = "{0} ملف لم يُنقل",
+        ["Fail_Note"] = "لكل ملف: مساره الكامل، وسبب الفشل، والإجراء المقترح.",
+        ["Fail_File"] = "الملف",
+        ["Fail_Source"] = "المسار في المصدر",
+        ["Fail_Destination"] = "المسار في الوجهة",
+        ["Fail_Reason"] = "السبب",
+        ["Fail_Code"] = "الكود",
+        ["Fail_Action"] = "الإجراء المقترح",
+        ["Fail_Origin"] = "المرحلة",
+        ["Fail_Origin_Copy"] = "أثناء النسخ",
+        ["Fail_Origin_Verification"] = "أثناء التحقق",
+        ["Fail_Origin_Scan"] = "أثناء فحص المصدر",
+        ["Fail_CopyList"] = "نسخ القائمة",
+        ["Fail_Copied"] = "تم نسخ قائمة الملفات الفاشلة إلى الحافظة.",
+        ["Fail_OpenReport"] = "تقرير مفصّل",
+        ["Fail_OpenFolder"] = "فتح مجلد الملف",
+        ["Fail_ReportFailed"] = "تعذّر إنشاء التقرير، التفاصيل في ملف السجل.",
+        ["Fail_MissingSize"] = "حجم لم يُنقل",
+        ["Fail_Attempts"] = "عدد المحاولات",
+        ["Fail_SelectRow"] = "اختر ملفاً من القائمة أولاً.",
+
         ["Compact_Title"] = "نقل ملفات — Future Speed",
         ["Compact_CurrentFile"] = "الملف الجاري نقله",
         ["Compact_From"] = "من",
@@ -349,6 +373,7 @@ internal static class Strings
         ["Integration_Limit"] = "ملاحظة: لا يستطيع أي برنامج استبدال Ctrl+V في ويندوز بطريقة مدعومة وآمنة، لذلك يعمل التكامل عبر أوامر قائمة مستكشف الملفات.",
         ["Integration_ClipboardEmpty"] = "الحافظة لا تحتوي ملفات أو مجلدات.",
         ["Integration_Staged"] = "تم تجهيز {0} عنصر — افتح مجلد الوجهة واختر «لصق بواسطة Future Speed».",
+        ["Integration_StageFailed"] = "تعذّر وضع التحديد في الحافظة لأن برنامجاً آخر يشغلها. أعد المحاولة بعد لحظة.",
     };
 
     public static readonly Dictionary<string, string> English = new(StringComparer.OrdinalIgnoreCase)
@@ -604,7 +629,7 @@ internal static class Strings
 
         ["Notify_Title"] = "Future Speed",
         ["Notify_Completed"] = "Transfer finished: {0}",
-        ["Notify_CompletedWithErrors"] = "Transfer finished with errors: {0}",
+        ["Notify_CompletedWithErrors"] = "Transfer finished: {0} — {1} file(s) did not transfer; see the report",
         ["Notify_Failed"] = "Transfer failed: {0}",
         ["Notify_Canceled"] = "Transfer canceled: {0}",
 
@@ -630,6 +655,30 @@ internal static class Strings
         ["Help_Safety4"] = "Every file is written to a temporary part file and renamed on success, so an interruption leaves no truncated file.",
         ["Help_Safety5"] = "A destination inside the source is rejected, and nothing is ever written outside the destination folder.",
         ["Help_Logs"] = "Logs and reports live in the app data folder; you can change their location in Settings.",
+
+        // --- failures (files that did not transfer) -------------------------
+        ["Fail_Title"] = "Files that did not transfer",
+        ["Fail_None"] = "No file failed in this transfer.",
+        ["Fail_Count"] = "{0} file(s) did not transfer",
+        ["Fail_Note"] = "For each file: its full path, why it failed, and what to do next.",
+        ["Fail_File"] = "File",
+        ["Fail_Source"] = "Source path",
+        ["Fail_Destination"] = "Destination path",
+        ["Fail_Reason"] = "Reason",
+        ["Fail_Code"] = "Code",
+        ["Fail_Action"] = "Suggested action",
+        ["Fail_Origin"] = "Stage",
+        ["Fail_Origin_Copy"] = "during the copy",
+        ["Fail_Origin_Verification"] = "during verification",
+        ["Fail_Origin_Scan"] = "while scanning the source",
+        ["Fail_CopyList"] = "Copy list",
+        ["Fail_Copied"] = "The list of failed files was copied to the clipboard.",
+        ["Fail_OpenReport"] = "Detailed report",
+        ["Fail_OpenFolder"] = "Open the file's folder",
+        ["Fail_ReportFailed"] = "The report could not be created; see the log file.",
+        ["Fail_MissingSize"] = "Data not transferred",
+        ["Fail_Attempts"] = "Attempts",
+        ["Fail_SelectRow"] = "Pick a file from the list first.",
 
         ["Compact_Title"] = "File transfer — Future Speed",
         ["Compact_CurrentFile"] = "Current file",
@@ -674,5 +723,6 @@ internal static class Strings
         ["Integration_Limit"] = "Note: no application can replace Ctrl+V on Windows in a supported, safe way, so the integration works through File Explorer menu commands.",
         ["Integration_ClipboardEmpty"] = "The clipboard holds no files or folders.",
         ["Integration_Staged"] = "{0} item(s) ready — open the destination folder and choose \"Paste with Future Speed\".",
+        ["Integration_StageFailed"] = "The clipboard is busy in another program, so the selection could not be placed on it. Try again in a moment.",
     };
 }

@@ -186,23 +186,22 @@ Write-Output "logo.png"
 $canvas = New-Canvas -Width 1280 -Height 320
 $g = $canvas.Graphics
 
-Draw-Mark -G $g -X 72 -Y 88 -Size 144
+Draw-Mark -G $g -X 64 -Y 80 -Size 160
 
-Draw-Text -G $g -Text 'Future Speed' -Family 'Segoe UI' -Size 64 `
-    -Style ([System.Drawing.FontStyle]::Bold) -Color ([System.Drawing.Color]::White) -X 256 -Y 92 | Out-Null
-Draw-Text -G $g -Text 'File Transfer' -Family 'Segoe UI' -Size 40 `
-    -Style ([System.Drawing.FontStyle]::Regular) -Color ([System.Drawing.Color]::FromArgb(255, 43, 192, 168)) -X 258 -Y 160
+# Each line gets its own band, so no two texts can ever overlap.
+Draw-Text -G $g -Text 'Future Speed' -Family 'Segoe UI' -Size 58 `
+    -Style ([System.Drawing.FontStyle]::Bold) -Color ([System.Drawing.Color]::White) -X 256 -Y 58
+Draw-Text -G $g -Text 'File Transfer' -Family 'Segoe UI' -Size 34 `
+    -Style ([System.Drawing.FontStyle]::Regular) -Color ([System.Drawing.Color]::FromArgb(255, 43, 192, 168)) -X 258 -Y 130
+Draw-Text -G $g -Text 'A faster future for your files' -Family 'Segoe UI' -Size 23 `
+    -Style ([System.Drawing.FontStyle]::Regular) -Color ([System.Drawing.Color]::FromArgb(190, 154, 170, 191)) -X 258 -Y 180
 
+Draw-Text -G $g -Text 'مستقبل أسرع لنقل ملفاتك' -Family 'Segoe UI' -Size 32 `
+    -Style ([System.Drawing.FontStyle]::Regular) -Color ([System.Drawing.Color]::FromArgb(240, 232, 238, 246)) -X 1216 -Y 120 -RightToLeft $true
 
-Draw-Text -G $g -Text 'مستقبل أسرع لنقل ملفاتك' -Family 'Segoe UI' -Size 30 `
-    -Style ([System.Drawing.FontStyle]::Regular) -Color $textMuted -X 1208 -Y 180 -RightToLeft $true | Out-Null
-
-Draw-Text -G $g -Text 'A faster future for your files' -Family 'Segoe UI' -Size 26 `
-    -Style ([System.Drawing.FontStyle]::Regular) -Color ([System.Drawing.Color]::FromArgb(170, 154, 170, 191)) -X 258 -Y 210 | Out-Null
-
-$x = 256.0
+$x = 258.0
 foreach ($chip in @('.NET 8', 'WPF · MVVM', 'SHA-256', 'RTL + LTR', 'Explorer menu')) {
-    $x += (Draw-Chip -G $g -Text $chip -X $x -Y 258 -FontSize 18) + 10
+    $x += (Draw-Chip -G $g -Text $chip -X $x -Y 228 -FontSize 19) + 10
 }
 
 $bannerPath = Join-Path $OutputDirectory 'banner.png'

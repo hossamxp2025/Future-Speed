@@ -63,7 +63,7 @@ public sealed class FileSystemScanner : IFileSystemScanner
                 }
                 else
                 {
-                    result.Problems.Add(new ScanProblem(source, "Source does not exist."));
+                    result.Problems.Add(new ScanProblem(source, "Source does not exist.", FailureReason.NotFound));
                 }
             }
             catch (OperationCanceledException)
@@ -73,7 +73,7 @@ public sealed class FileSystemScanner : IFileSystemScanner
             catch (Exception ex)
             {
                 _logger.LogWarning(ex, "Scan failed for {Source}", source);
-                result.Problems.Add(new ScanProblem(source, ex.Message));
+                result.Problems.Add(Problem(source, ex));
             }
         }
 
@@ -110,7 +110,7 @@ public sealed class FileSystemScanner : IFileSystemScanner
             }
             catch (Exception ex)
             {
-                result.Problems.Add(new ScanProblem(current, ex.Message));
+                result.Problems.Add(Problem(current, ex));
                 continue;
             }
 
@@ -125,7 +125,7 @@ public sealed class FileSystemScanner : IFileSystemScanner
 
                     if (attributes.HasFlag(FileAttributes.ReparsePoint) && !FollowReparsePoints)
                     {
-                        result.Problems.Add(new ScanProblem(entry, "Skipped link / reparse point."));
+                        result.Problems.Add(new ScanProblem(entry, "Skipped link / reparse point.", FailureReason.None));
                         continue;
                     }
 
@@ -158,7 +158,7 @@ public sealed class FileSystemScanner : IFileSystemScanner
                 }
                 catch (Exception ex)
                 {
-                    result.Problems.Add(new ScanProblem(entry, ex.Message));
+                    result.Problems.Add(Problem(entry, ex));
                 }
             }
         }
@@ -195,7 +195,17 @@ public sealed class FileSystemScanner : IFileSystemScanner
         }
         catch (Exception ex)
         {
-            result.Problems.Add(new ScanProblem(sourceDirectory, ex.Message));
+            result.Problems.Add(Problem(sourceDirectory, ex));
         }
+    }
+
+    /// <summary>
+    /// A path that could not be read is still something the user must see, so it carries the
+    /// same cause code as a copy failure instead of a bare exception message.
+    /// </summary>
+    private static ScanProblem Problem(string path, Exception exception)
+    {
+        var diagnosis = FailureClassifier.Classify(exception);
+        return new ScanProblem(path, PathUtils.Readable(diagnosis.Message), diagnosis.Reason);
     }
 }

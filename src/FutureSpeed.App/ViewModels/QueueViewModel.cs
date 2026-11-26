@@ -19,17 +19,20 @@ public sealed partial class QueueViewModel : ObservableObject
     private readonly IDialogService _dialogs;
     private readonly ISettingsService _settings;
     private readonly ILocalizationService _localization;
+    private readonly Func<FailureListViewModel> _failures;
 
     public QueueViewModel(
         ITransferQueue queue,
         IDialogService dialogs,
         ISettingsService settings,
-        ILocalizationService localization)
+        ILocalizationService localization,
+        Func<FailureListViewModel> failures)
     {
         _queue = queue;
         _dialogs = dialogs;
         _settings = settings;
         _localization = localization;
+        _failures = failures;
 
         _queue.MaxConcurrentJobs = settings.Current.MaxConcurrentJobs;
 
@@ -139,7 +142,7 @@ public sealed partial class QueueViewModel : ObservableObject
 
             if (existingIndex < 0)
             {
-                Jobs.Insert(Math.Min(i, Jobs.Count), new JobItemViewModel(queued));
+                Jobs.Insert(Math.Min(i, Jobs.Count), new JobItemViewModel(queued, _failures()));
                 continue;
             }
 

@@ -22,7 +22,14 @@ public sealed class TransferRequest
     /// <summary>A second launch with no work: just bring the running instance forward.</summary>
     public bool ActivateMainWindow { get; set; }
 
-    public bool HasWork => ActivateMainWindow || FromClipboard || (Sources.Count > 0 && Destination.Length > 0);
+    /// <summary>
+    /// "Copy/Move with Future Speed": only place the selection on the clipboard. Several of
+    /// these arrive at once for one selection and are merged into a single clipboard write.
+    /// </summary>
+    public bool StageOnly { get; set; }
+
+    public bool HasWork => ActivateMainWindow || FromClipboard || StageOnly ||
+                           (Sources.Count > 0 && Destination.Length > 0);
 
     public static JsonSerializerOptions SerializerOptions { get; } = new()
     {

@@ -47,6 +47,18 @@ internal sealed class FakeDialogService : IDialogService
     }
 
     public void OpenInExplorer(string path) => Opened.Add(path);
+
+    public void OpenFile(string path) => OpenedFiles.Add(path);
+
+    public bool CopyText(string text)
+    {
+        CopiedText.Add(text);
+        return CopyTextSucceeds;
+    }
+
+    public List<string> OpenedFiles { get; } = new();
+    public List<string> CopiedText { get; } = new();
+    public bool CopyTextSucceeds { get; set; } = true;
 }
 
 /// <summary>A clipboard that holds whatever a test puts in it.</summary>

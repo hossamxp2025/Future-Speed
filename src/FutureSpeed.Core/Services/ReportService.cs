@@ -23,6 +23,7 @@ public sealed class ReportService : IReportService
         TransferResult result,
         ReportFormat format,
         string directory,
+        CultureInfo? culture = null,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(result);
@@ -38,6 +39,7 @@ public sealed class ReportService : IReportService
         {
             ReportFormat.Json => "json",
             ReportFormat.Csv => "csv",
+            ReportFormat.Html => "html",
             _ => "txt"
         };
 
@@ -47,7 +49,8 @@ public sealed class ReportService : IReportService
         {
             ReportFormat.Json => BuildJson(result),
             ReportFormat.Csv => BuildCsv(result),
-            _ => BuildText(result)
+            ReportFormat.Html => ReportHtmlBuilder.Build(result, culture ?? CultureInfo.CurrentUICulture),
+            _ => BuildText(result, culture ?? CultureInfo.CurrentUICulture)
         };
 
         // UTF-8 with BOM so Excel opens the CSV with Arabic paths intact.
@@ -58,6 +61,8 @@ public sealed class ReportService : IReportService
 
     private static string BuildJson(TransferResult result)
     {
+        var summary = FailureSummary.FromItems(result.Items, result.Job.Scan?.Problems);
+
         var payload = new
         {
             product = "Future Speed File Transfer",
@@ -87,6 +92,26 @@ public sealed class ReportService : IReportService
                 verified = result.Items.Count(i => i.SourceHash is not null && i.DestinationHash is not null),
                 mismatches = result.Items.Count(i => i.Outcome == FileOutcome.VerificationFailed)
             },
+            // Listed on its own so a script can read "what did not transfer" without
+            // filtering the whole file list.
+            failures = summary.Failures.Select(f => new
+            {
+                file = f.FileName,
+                source = f.SourcePath,
+                destination = f.DestinationPath,
+                relativePath = f.RelativePath,
+                size = f.Size,
+                reason = f.Reason.ToString(),
+                reasonText = FailureText.What(f.Reason, CultureInfo.InvariantCulture),
+                suggestedAction = FailureText.Fix(f.Reason, CultureInfo.InvariantCulture),
+                nativeErrorCode = f.NativeErrorCode,
+                origin = f.Origin.ToString(),
+                attempts = f.Attempts,
+                failedAt = f.FailedAt,
+                message = f.Message
+            }),
+            failureCountsByReason = summary.ByReason.Select(g => new { reason = g.Reason.ToString(), count = g.Count }),
+            notTransferredBytes = summary.FailedBytes,
             files = result.Items.Select(i => new
             {
                 relativePath = i.RelativePath,
@@ -94,11 +119,14 @@ public sealed class ReportService : IReportService
                 destination = i.EffectiveDestinationPath ?? i.DestinationPath,
                 size = i.Size,
                 outcome = i.Outcome.ToString(),
+                reason = i.Reason == FailureReason.None ? null : i.Reason.ToString(),
+                nativeErrorCode = i.NativeErrorCode,
+                attempts = i.Attempts == 0 ? (int?)null : i.Attempts,
                 error = i.Error,
                 sha256Source = i.SourceHash,
                 sha256Destination = i.DestinationHash
             }),
-            scanProblems = result.Job.Scan?.Problems.Select(p => new { path = p.Path, reason = p.Reason })
+            scanProblems = result.Job.Scan?.Problems.Select(p => new { path = p.Path, reason = p.Reason, kind = p.Kind.ToString() })
         };
 
         return JsonSerializer.Serialize(payload, SerializerOptions);
@@ -107,7 +135,7 @@ public sealed class ReportService : IReportService
     private static string BuildCsv(TransferResult result)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("RelativePath,Source,Destination,SizeBytes,Outcome,Error,Sha256Source,Sha256Destination");
+        sb.AppendLine("RelativePath,Source,Destination,SizeBytes,Outcome,Reason,ReasonText,NativeErrorCode,Attempts,SuggestedAction,Error,Sha256Source,Sha256Destination");
 
         foreach (var item in result.Items)
         {
@@ -116,6 +144,15 @@ public sealed class ReportService : IReportService
             sb.Append(Escape(item.EffectiveDestinationPath ?? item.DestinationPath)).Append(',');
             sb.Append(item.Size.ToString(CultureInfo.InvariantCulture)).Append(',');
             sb.Append(Escape(item.Outcome.ToString())).Append(',');
+            sb.Append(Escape(item.Reason == FailureReason.None ? string.Empty : item.Reason.ToString())).Append(',');
+            sb.Append(Escape(item.Reason == FailureReason.None
+                ? string.Empty
+                : FailureText.What(item.Reason, CultureInfo.InvariantCulture))).Append(',');
+            sb.Append(Escape(item.NativeErrorCode?.ToString(CultureInfo.InvariantCulture))).Append(',');
+            sb.Append(Escape(item.Attempts == 0 ? string.Empty : item.Attempts.ToString(CultureInfo.InvariantCulture))).Append(',');
+            sb.Append(Escape(item.HasFailed
+                ? FailureText.Fix(item.Reason, CultureInfo.InvariantCulture)
+                : string.Empty)).Append(',');
             sb.Append(Escape(item.Error)).Append(',');
             sb.Append(Escape(item.SourceHash)).Append(',');
             sb.Append(Escape(item.DestinationHash)).AppendLine();
@@ -132,11 +169,19 @@ public sealed class ReportService : IReportService
         }
     }
 
-    private static string BuildText(TransferResult result)
+    /// <summary>
+    /// The plain-text report. It leads with what did not transfer, because that is the part a
+    /// user needs: full source path, intended destination, cause, and what to do about it.
+    /// </summary>
+    private static string BuildText(TransferResult result, CultureInfo culture)
     {
+        var arabic = culture.TwoLetterISOLanguageName.Equals("ar", StringComparison.OrdinalIgnoreCase);
+        var summary = FailureSummary.FromItems(result.Items, result.Job.Scan?.Problems);
+        var average = result.Duration.TotalSeconds > 0 ? result.TransferredBytes / result.Duration.TotalSeconds : 0;
+
         var sb = new StringBuilder();
         sb.AppendLine("Future Speed File Transfer - transfer report");
-        sb.AppendLine(new string('=', 60));
+        sb.AppendLine(new string('=', 78));
         sb.AppendLine($"Job          : {result.Job.Name} ({result.Job.Id})");
         sb.AppendLine($"Mode         : {result.Job.Mode}");
         sb.AppendLine($"Destination  : {result.Job.DestinationRoot}");
@@ -144,22 +189,70 @@ public sealed class ReportService : IReportService
         sb.AppendLine($"State        : {result.FinalState}");
         sb.AppendLine($"Started      : {result.Job.StartedAt:yyyy-MM-dd HH:mm:ss}");
         sb.AppendLine($"Finished     : {result.Job.FinishedAt:yyyy-MM-dd HH:mm:ss}");
-        sb.AppendLine($"Duration     : {ByteFormatter.FormatDuration(result.Duration, CultureInfo.InvariantCulture)}");
-        sb.AppendLine($"Transferred  : {ByteFormatter.FormatSize(result.TransferredBytes, CultureInfo.InvariantCulture)}");
-        sb.AppendLine($"Average speed: {ByteFormatter.FormatSpeed(result.Duration.TotalSeconds > 0 ? result.TransferredBytes / result.Duration.TotalSeconds : 0, CultureInfo.InvariantCulture)}");
-        sb.AppendLine($"Files        : {result.Items.Count} total / {result.CopiedFiles} done / {result.SkippedFiles} skipped / {result.FailedFiles} failed");
+        sb.AppendLine($"Duration     : {ByteFormatter.FormatDuration(result.Duration, culture)}");
+        sb.AppendLine($"Transferred  : {ByteFormatter.FormatSize(result.TransferredBytes, culture)}");
+        sb.AppendLine($"Not moved    : {ByteFormatter.FormatSize(summary.FailedBytes, culture)}");
+        sb.AppendLine($"Average speed: {ByteFormatter.FormatSpeed(average, culture)}");
+        sb.AppendLine($"Files        : {result.Items.Count} total / {result.CopiedFiles} done / {result.SkippedFiles} skipped / {summary.Count} failed");
         sb.AppendLine($"Verification : {(result.Job.Options.VerifyWithSha256 ? "SHA-256 enabled" : "disabled")}");
         sb.AppendLine();
 
-        sb.AppendLine("Files");
-        sb.AppendLine(new string('-', 60));
+        // ---- failures first -----------------------------------------------------
+        if (summary.HasFailures)
+        {
+            sb.AppendLine(arabic ? "ملفات لم تُنقل" : "FILES THAT DID NOT TRANSFER");
+            sb.AppendLine(new string('=', 78));
+
+            foreach (var (reason, count) in summary.ByReason)
+                sb.AppendLine($"  {count,5} x {FailureText.What(reason, culture)}");
+
+            sb.AppendLine();
+
+            var index = 1;
+            foreach (var failure in summary.Failures)
+            {
+                sb.AppendLine($"[{index++}] {failure.FileName}  ({ByteFormatter.FormatSize(failure.Size, culture)})");
+                sb.AppendLine($"     {(arabic ? "المصدر   " : "source   ")}: {failure.SourcePath}");
+                sb.AppendLine($"     {(arabic ? "الوجهة   " : "target   ")}: {failure.DestinationPath ?? "-"}");
+                sb.AppendLine($"     {(arabic ? "السبب    " : "reason   ")}: {FailureText.What(failure.Reason, culture)} [{failure.Code}]");
+                if (!string.IsNullOrWhiteSpace(failure.Message))
+                    sb.AppendLine($"     {(arabic ? "الرسالة  " : "message  ")}: {failure.Message}");
+                sb.AppendLine($"     {(arabic ? "الإجراء  " : "action   ")}: {FailureText.Fix(failure.Reason, culture)}");
+                sb.AppendLine();
+            }
+        }
+        else
+        {
+            sb.AppendLine(arabic
+                ? "لم يفشل أي ملف في هذه العملية."
+                : "No file failed in this transfer.");
+            sb.AppendLine();
+        }
+
+        // ---- skipped ------------------------------------------------------------
+        var skipped = result.Items.Where(i => i.Outcome == FileOutcome.Skipped).ToList();
+        if (skipped.Count > 0)
+        {
+            sb.AppendLine(arabic ? "ملفات تم تخطيها" : "SKIPPED FILES");
+            sb.AppendLine(new string('-', 78));
+            foreach (var item in skipped)
+                sb.AppendLine($"  {item.SourcePath}");
+            sb.AppendLine();
+        }
+
+        // ---- full list ----------------------------------------------------------
+        sb.AppendLine(arabic ? "كل الملفات" : "ALL FILES");
+        sb.AppendLine(new string('-', 78));
         foreach (var item in result.Items)
         {
             sb.Append("  [").Append(item.Outcome).Append("] ")
-              .Append(item.RelativePath)
+              .Append(item.SourcePath)
               .Append("  (")
-              .Append(ByteFormatter.FormatSize(item.Size, CultureInfo.InvariantCulture))
+              .Append(ByteFormatter.FormatSize(item.Size, culture))
               .Append(')');
+
+            if (item.Reason != FailureReason.None)
+                sb.Append("  <").Append(item.ReasonCode).Append('>');
 
             if (!string.IsNullOrEmpty(item.DestinationHash))
                 sb.Append("  sha256=").Append(item.DestinationHash);
@@ -169,32 +262,12 @@ public sealed class ReportService : IReportService
 
         sb.AppendLine();
 
-        var failures = result.Items.Where(i => i.Outcome is FileOutcome.Failed or FileOutcome.VerificationFailed).ToList();
-        if (failures.Count > 0)
-        {
-            sb.AppendLine("Failed files");
-            sb.AppendLine(new string('-', 60));
-            foreach (var item in failures)
-                sb.AppendLine($"  [{item.Outcome}] {item.RelativePath} :: {item.Error}");
-            sb.AppendLine();
-        }
-
-        var skipped = result.Items.Where(i => i.Outcome == FileOutcome.Skipped).ToList();
-        if (skipped.Count > 0)
-        {
-            sb.AppendLine("Skipped files");
-            sb.AppendLine(new string('-', 60));
-            foreach (var item in skipped)
-                sb.AppendLine($"  {item.RelativePath}");
-            sb.AppendLine();
-        }
-
         if (result.Job.Scan?.Problems.Count > 0)
         {
-            sb.AppendLine("Scan problems");
-            sb.AppendLine(new string('-', 60));
+            sb.AppendLine(arabic ? "مشاكل أثناء فحص المصدر" : "SCAN PROBLEMS");
+            sb.AppendLine(new string('-', 78));
             foreach (var problem in result.Job.Scan.Problems)
-                sb.AppendLine($"  {problem.Path} :: {problem.Reason}");
+                sb.AppendLine($"  {problem.Path} :: [{problem.Kind}] {problem.Reason}");
         }
 
         return sb.ToString();

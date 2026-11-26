@@ -75,7 +75,9 @@ public enum ReportFormat
 {
     Json = 0,
     Csv = 1,
-    Txt = 2
+    Txt = 2,
+    /// <summary>A printable, self-contained page: the format meant to be read by a human.</summary>
+    Html = 3
 }
 
 public enum SyncDirection

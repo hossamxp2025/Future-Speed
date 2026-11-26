@@ -58,12 +58,14 @@ public sealed partial class CompactTransferViewModel : ObservableObject
         ITransferQueue queue,
         IDialogService dialogs,
         IDriveService drives,
-        ILocalizationService localization)
+        ILocalizationService localization,
+        FailureListViewModel failures)
     {
         _queue = queue;
         _dialogs = dialogs;
         _drives = drives;
         _localization = localization;
+        Failures = failures;
 
         _queue.JobProgress += OnJobEvent;
         _queue.JobStarted += OnJobEvent;
@@ -71,6 +73,9 @@ public sealed partial class CompactTransferViewModel : ObservableObject
     }
 
     public ObservableCollection<TransferFileRowViewModel> Files { get; } = new();
+
+    /// <summary>Every file this job could not transfer: full path, cause, suggested action.</summary>
+    public FailureListViewModel Failures { get; }
 
     [ObservableProperty] private string _title = string.Empty;
     [ObservableProperty] private TransferMode _mode = TransferMode.Copy;
@@ -98,6 +103,9 @@ public sealed partial class CompactTransferViewModel : ObservableObject
     [ObservableProperty] private int _remainingFiles;
     [ObservableProperty] private int _failedFiles;
     [ObservableProperty] private int _skippedFiles;
+
+    /// <summary>0 = the file list, 1 = the failures tab (opened by itself on the first failure).</summary>
+    [ObservableProperty] private int _selectedTab;
 
     [ObservableProperty] private bool _isVerifying;
     [ObservableProperty] private bool _verificationEnabled;
@@ -131,6 +139,7 @@ public sealed partial class CompactTransferViewModel : ObservableObject
         DestinationRoot = job.Job.DestinationRoot;
         DestinationFreeBytes = _drives.GetAvailableFreeSpace(job.Job.DestinationRoot) ?? 0;
 
+        Failures.Track(job);
         RefreshFromJob();
     }
 
@@ -181,6 +190,13 @@ public sealed partial class CompactTransferViewModel : ObservableObject
 
         SyncFiles();
 
+        var hadFailures = Failures.HasFailures;
+        Failures.Update();
+
+        // Bring the failures forward the moment the first file fails: a counter the user
+        // has to go looking for is what made failures invisible in the first place.
+        if (!hadFailures && Failures.HasFailures) SelectedTab = 1;
+
         OnPropertyChanged(nameof(IsFinished));
         OnPropertyChanged(nameof(CanPause));
         OnPropertyChanged(nameof(CanResume));
@@ -193,6 +209,12 @@ public sealed partial class CompactTransferViewModel : ObservableObject
         if (!wasFinished && IsFinished)
         {
             DestinationFreeBytes = _drives.GetAvailableFreeSpace(_job.Job.DestinationRoot) ?? DestinationFreeBytes;
+
+            // Say it in words, not just a counter: the failures panel right below
+            // carries the paths, and the report button is next to it.
+            if (Failures.HasFailures)
+                StatusMessage = _localization.Format("Fail_Count", Failures.Count);
+
             Finished?.Invoke(this, EventArgs.Empty);
         }
     }
@@ -262,6 +284,8 @@ public sealed partial class CompactTransferViewModel : ObservableObject
         }
 
         // Follow the retry job in this same window.
+        StatusMessage = null;
+        SelectedTab = 0;
         Attach(retry);
     }
 

@@ -349,6 +349,9 @@ public sealed class TransferEngine : ITransferEngine
                     {
                         item.Outcome = FileOutcome.VerificationFailed;
                         item.Error = "SHA-256 mismatch between source and destination.";
+                        item.Reason = FailureReason.VerificationMismatch;
+                        item.FailedAt = DateTimeOffset.Now;
+                        item.Attempts = attempt;
                         Interlocked.Increment(ref runtime.FailedFiles);
                         runtime.MarkFailed(item.RelativePath);
                         TryDelete(destination);
@@ -383,6 +386,7 @@ public sealed class TransferEngine : ITransferEngine
                 _logger.LogInformation("Skipped on request: {Path}", item.SourcePath);
                 item.Outcome = FileOutcome.Skipped;
                 item.Error = "Skipped on request.";
+                item.Reason = FailureReason.SkippedByUser;
                 Interlocked.Increment(ref runtime.SkippedFiles);
                 runtime.MarkCompleted(item.RelativePath);
                 return;
@@ -391,6 +395,10 @@ public sealed class TransferEngine : ITransferEngine
             {
                 item.Outcome = FileOutcome.Failed;
                 item.Error = "The destination volume is full.";
+                item.Reason = FailureReason.DiskFull;
+                item.NativeErrorCode = FailureClassifier.NativeCode(ex);
+                item.FailedAt = DateTimeOffset.Now;
+                item.Attempts = attempt;
                 Interlocked.Increment(ref runtime.FailedFiles);
                 runtime.MarkFailed(item.RelativePath);
                 throw new TransferAbortedException("The destination volume ran out of space.", ex);
@@ -399,6 +407,10 @@ public sealed class TransferEngine : ITransferEngine
             {
                 item.Outcome = FileOutcome.Failed;
                 item.Error = "The destination is no longer available.";
+                item.Reason = FailureReason.DestinationUnavailable;
+                item.NativeErrorCode = FailureClassifier.NativeCode(ex);
+                item.FailedAt = DateTimeOffset.Now;
+                item.Attempts = attempt;
                 Interlocked.Increment(ref runtime.FailedFiles);
                 runtime.MarkFailed(item.RelativePath);
                 throw new TransferAbortedException(
@@ -422,9 +434,17 @@ public sealed class TransferEngine : ITransferEngine
                     continue;
                 }
 
-                _logger.LogWarning(ex, "File failed: {Path}", item.SourcePath);
+                var diagnosis = FailureClassifier.Classify(ex);
+                _logger.LogWarning(
+                    ex, "File failed: {Path} ({Code})", item.SourcePath, diagnosis.Code);
+
                 item.Outcome = FileOutcome.Failed;
-                item.Error = ex.Message;
+                // Keep the OS text for the log, but the UI and the report read the reason code.
+                item.Error = PathUtils.Readable(string.IsNullOrWhiteSpace(ex.Message) ? diagnosis.Message : ex.Message);
+                item.Reason = diagnosis.Reason;
+                item.NativeErrorCode = diagnosis.NativeCode;
+                item.FailedAt = DateTimeOffset.Now;
+                item.Attempts = attempt;
                 Interlocked.Increment(ref runtime.FailedFiles);
                 runtime.MarkFailed(item.RelativePath);
 

@@ -10,7 +10,8 @@ namespace FutureSpeed.App.Services;
 public interface INotificationService
 {
     /// <summary>Raises a Windows notification (and optional sound) for a finished job.</summary>
-    void NotifyCompleted(string jobName, bool hadErrors);
+    /// <param name="failedFiles">Shown in the text, so the notification itself says how many files are missing.</param>
+    void NotifyCompleted(string jobName, bool hadErrors, int failedFiles = 0);
 
     void NotifyFailed(string jobName, string? reason);
 
@@ -73,9 +74,11 @@ public sealed class NotificationService : INotificationService, IDisposable
         }
     }
 
-    public void NotifyCompleted(string jobName, bool hadErrors)
+    public void NotifyCompleted(string jobName, bool hadErrors, int failedFiles = 0)
     {
-        var text = _localization.Format(hadErrors ? "Notify_CompletedWithErrors" : "Notify_Completed", jobName);
+        var text = hadErrors
+            ? _localization.Format("Notify_CompletedWithErrors", jobName, failedFiles)
+            : _localization.Format("Notify_Completed", jobName);
         Show(text, hadErrors ? ToolTipIcon.Warning : ToolTipIcon.Info);
 
         if (_settings.Current.PlaySoundWhenFinished)

@@ -3,12 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:loc="clr-namespace:FutureSpeed.App.Localization"
         xmlns:vm="clr-namespace:FutureSpeed.App.ViewModels"
+        xmlns:views="clr-namespace:FutureSpeed.App.Views"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         d:DataContext="{d:DesignInstance Type=vm:CompactTransferViewModel}"
         Title="{loc:Str Compact_Title}"
-        Width="760" Height="760"
+        Width="780" Height="840"
         MinWidth="560" MinHeight="560"
         WindowStartupLocation="CenterScreen"
         Background="{DynamicResource Brush.Bg}"
@@ -213,10 +214,13 @@
             </StackPanel>
         </Border>
 
-        <!-- ===================== file list ===================== -->
-        <!-- MinHeight keeps the list readable: without it the fixed cards above squeeze
-             this row to nothing on a short window. -->
-        <Border Grid.Row="3" Style="{StaticResource Card}" Margin="0,12,0,0" Padding="8" MinHeight="150">
+        <!-- ============ files / failures ============ -->
+        <!-- Two tabs rather than two stacked panels: a short window cannot show both
+             tables at a useful height, and the failures tab opens itself when a file fails. -->
+        <TabControl Grid.Row="3" Margin="0,12,0,0" Background="Transparent" BorderThickness="0"
+                    SelectedIndex="{Binding SelectedTab}">
+            <TabItem Header="{loc:Str Compact_FilesList}">
+        <Border Style="{StaticResource Card}" Padding="8" MinHeight="150">
             <DockPanel>
                 <TextBlock DockPanel.Dock="Top" Text="{loc:Str Compact_FilesList}"
                            Style="{StaticResource Text.Muted}" Margin="6,2,6,6" />
@@ -246,6 +250,22 @@
                 </DataGrid>
             </DockPanel>
         </Border>
+            </TabItem>
+
+            <TabItem Visibility="{Binding Failures.HasFailures, Converter={StaticResource HasValue}}">
+                <TabItem.Header>
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{loc:Str Fail_Title}" Foreground="{DynamicResource Brush.Danger}" />
+                        <Border Style="{StaticResource Badge}" Margin="6,0,0,0"
+                                Background="{DynamicResource Brush.Danger}">
+                            <TextBlock FontSize="11" Foreground="White" Text="{Binding Failures.Count}" />
+                        </Border>
+                    </StackPanel>
+                </TabItem.Header>
+
+                <views:FailuresPanel DataContext="{Binding Failures}" />
+            </TabItem>
+        </TabControl>
 
         <!-- ===================== actions ===================== -->
         <Grid Grid.Row="4" Margin="0,12,0,0">

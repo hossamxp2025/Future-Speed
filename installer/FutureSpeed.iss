@@ -10,7 +10,7 @@
 
 #define AppName        "Future Speed File Transfer"
 #define AppShortName   "Future Speed"
-#define AppVersion     "1.1.0"
+#define AppVersion     "1.1.2"
 #define AppPublisher   "Future Speed"
 #define AppExeName     "FutureSpeed.exe"
 #define SourceDir      "..\artifacts\publish\win-x64"

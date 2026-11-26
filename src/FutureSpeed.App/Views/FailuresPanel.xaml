@@ -1,0 +1,128 @@
+<UserControl x:Class="FutureSpeed.App.Views.FailuresPanel"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:loc="clr-namespace:FutureSpeed.App.Localization"
+             xmlns:vm="clr-namespace:FutureSpeed.App.ViewModels"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:FailureListViewModel}"
+             Visibility="{Binding HasFailures, Converter={StaticResource HasValue},
+                                  FallbackValue=Collapsed, TargetNullValue=Collapsed}">
+
+    <!-- The whole point of this panel: a failed file is never just a number.
+         Every row carries the full source path, where it was going, why it stopped,
+         and what the user can do about it. -->
+    <Border Style="{StaticResource Card}" BorderBrush="{DynamicResource Brush.Danger}" Padding="12">
+        <DockPanel>
+            <Grid DockPanel.Dock="Top" Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="&#xE783;" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                                   Foreground="{DynamicResource Brush.Danger}" VerticalAlignment="Center" />
+                        <TextBlock Text="{loc:Str Fail_Title}" Style="{StaticResource Text.H3}"
+                                   Margin="8,0,0,0" VerticalAlignment="Center"
+                                   ToolTip="{loc:Str Fail_Note}" />
+                        <Border Style="{StaticResource Badge}" Margin="8,0,0,0"
+                                Background="{DynamicResource Brush.Danger}">
+                            <TextBlock FontSize="11" Foreground="White" Text="{Binding Count}" />
+                        </Border>
+                    </StackPanel>
+
+                    <!-- causes and the size left behind, on one line to keep the table tall -->
+                    <TextBlock Style="{StaticResource Text.Muted}" Margin="0,3,0,0"
+                               TextTrimming="CharacterEllipsis"
+                               ToolTip="{Binding ByReason}">
+                        <Run Text="{Binding ByReason, Mode=OneWay}" />
+                        <Run Text="  ·  " />
+                        <Run Text="{loc:Str Fail_MissingSize}" /><Run Text=": " />
+                        <Run Text="{Binding MissingBytes, Converter={StaticResource Size}, Mode=OneWay}" />
+                    </TextBlock>
+                </StackPanel>
+
+                <WrapPanel Grid.Column="1" VerticalAlignment="Top">
+                    <Button Style="{StaticResource Btn.Secondary}" Margin="6,0,0,0"
+                            Content="{loc:Str Fail_OpenReport}"
+                            Command="{Binding OpenReportCommand}" />
+                    <Button Style="{StaticResource Btn.Secondary}" Margin="6,0,0,0"
+                            Content="{loc:Str Fail_CopyList}"
+                            Command="{Binding CopyListCommand}" />
+                    <Button Style="{StaticResource Btn.Secondary}" Margin="6,0,0,0"
+                            Content="{loc:Str Fail_OpenFolder}"
+                            Command="{Binding OpenFolderCommand}"
+                            CommandParameter="{Binding Selected}" />
+                </WrapPanel>
+            </Grid>
+
+            <DataGrid ItemsSource="{Binding Rows}"
+                      SelectedItem="{Binding Selected}"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      HeadersVisibility="Column"
+                      GridLinesVisibility="None"
+                      Background="Transparent"
+                      BorderThickness="0"
+                      RowBackground="Transparent"
+                      AlternatingRowBackground="{DynamicResource Brush.SurfaceAlt}"
+                      Foreground="{DynamicResource Brush.Text}"
+                      FontSize="12"
+                      MinHeight="90"
+                      CanUserResizeRows="False"
+                      SelectionMode="Single">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="{loc:Str Fail_File}" Binding="{Binding FileName}" Width="1.3*" />
+
+                    <!-- The path the user came here for -->
+                    <DataGridTextColumn Header="{loc:Str Fail_Source}" Binding="{Binding SourcePath}" Width="3.6*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="ToolTip" Value="{Binding SourcePath}" />
+                                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                <Setter Property="FontFamily" Value="Consolas" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <DataGridTextColumn Header="{loc:Str Fail_Destination}" Binding="{Binding DestinationPath}" Width="2.2*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="ToolTip" Value="{Binding DestinationPath}" />
+                                <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+                                <Setter Property="FontFamily" Value="Consolas" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <DataGridTextColumn Header="{loc:Str Common_Size}"
+                                        Binding="{Binding Size, Converter={StaticResource Size}}" Width="Auto" />
+
+                    <DataGridTextColumn Header="{loc:Str Fail_Reason}" Binding="{Binding Reason}" Width="1.7*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextWrapping" Value="Wrap" />
+                                <Setter Property="ToolTip" Value="{Binding Message}" />
+                                <Setter Property="Foreground" Value="{DynamicResource Brush.Danger}" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+
+                    <DataGridTextColumn Header="{loc:Str Fail_Code}" Binding="{Binding Code}" Width="Auto" />
+                    <DataGridTextColumn Header="{loc:Str Fail_Origin}" Binding="{Binding Stage}" Width="Auto" />
+
+                    <DataGridTextColumn Header="{loc:Str Fail_Action}" Binding="{Binding Action}" Width="2*">
+                        <DataGridTextColumn.ElementStyle>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="TextWrapping" Value="Wrap" />
+                            </Style>
+                        </DataGridTextColumn.ElementStyle>
+                    </DataGridTextColumn>
+                </DataGrid.Columns>
+            </DataGrid>
+        </DockPanel>
+    </Border>
+</UserControl>

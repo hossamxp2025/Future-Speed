@@ -1,13 +1,17 @@
 ﻿<div align="center">
 
-<img src="docs/images/banner.png" alt="Future Speed File Transfer — مستقبل أسرع لنقل ملفاتك" width="100%">
+# ⚡ Future Speed File Transfer
+
+**مستقبل أسرع لنقل ملفاتك** · *A faster future for your files*
+
+<img src="docs/images/banner.png" alt="Future Speed File Transfer" width="820">
 
 [![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/download/dotnet/8.0)
 [![WPF](https://img.shields.io/badge/UI-WPF%20%2B%20MVVM-0078D4)](https://learn.microsoft.com/dotnet/desktop/wpf/)
 [![Platform](https://img.shields.io/badge/Windows-10%20%7C%2011-0078D4?logo=windows&logoColor=white)](#المتطلبات)
-[![Tests](https://img.shields.io/badge/tests-218%20passing-2ea44f)](#5-البنية-والجودة)
+[![Tests](https://img.shields.io/badge/tests-282%20passing-2ea44f)](#5-البنية-والجودة)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-1.1.0-1466CC)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.1.2-1466CC)](CHANGELOG.md)
 
 برنامج سطح مكتب لويندوز لنقل ونسخ الملفات والمجلدات بسرعة عالية، مع تحقق كامل من سلامة
 البيانات، وواجهة عربية RTL قابلة للتحويل إلى الإنجليزية LTR، ووضع فاتح وداكن،
@@ -77,6 +81,12 @@ FutureSpeed.exe --unregister-explorer               # إلغاؤها بالكا�
 | قائمة الانتظار | الإعدادات |
 |---|---|
 | <img src="docs/images/queue.png" width="400"> | <img src="docs/images/settings.png" width="400"> |
+
+**ملفات لم تُنقل، والتقرير المفصّل** — لكل ملف فاشل مساره الكامل وسببه والإجراء المقترح:
+
+| اللوحة داخل البرنامج | تقرير HTML قابل للطباعة |
+|---|---|
+| <img src="docs/images/failures.png" width="400"> | <img src="docs/images/report.png" width="400"> |
 
 > دليل الاستخدام الكامل بالصور: **[docs/دليل-الاستخدام.md](docs/دليل-الاستخدام.md)**
 > وسجل التغييرات: **[CHANGELOG.md](CHANGELOG.md)**
@@ -203,7 +213,7 @@ powershell -ExecutionPolicy Bypass -File build\make-installer.ps1
 السكربت ينشر البرنامج ثم يترجم `installer\FutureSpeed.iss`، والناتج:
 
 ```
-artifacts\installer\FutureSpeed-1.1.0-Setup.exe
+artifacts\installer\FutureSpeed-1.1.2-Setup.exe
 ```
 
 خصائص ملف التثبيت: تثبيت لكل مستخدم أو لكل الجهاز (المستخدم يختار، فلا يُطلب رفع الصلاحيات بلا
@@ -218,26 +228,19 @@ artifacts\installer\FutureSpeed-1.1.0-Setup.exe
 
 ### إصدار تحديث جديد على GitHub
 
-المشروع يضم Workflow في `.github/workflows/release.yml`. عند رفع Tag بالشكل `vX.Y.Z`
-يشغّل GitHub البناء والاختبارات، ثم ينشئ Release تلقائياً ويُرفق به:
+عند رفع Tag بالشكل `vX.Y.Z`، يبني GitHub Actions المشروع ويختبره وينشر المثبّت
+والنسخة المحمولة وملفي `SHA256SUMS.txt` و`latest.json` في صفحة [الإصدارات](../../releases).
+ضع وصف الإصدار في `docs/release-vX.Y.Z.md` لاستخدامه عند النشر.
 
-- ملف التثبيت `FutureSpeed-X.Y.Z-Setup.exe`.
-- نسخة محمولة `FutureSpeed-X.Y.Z-win-x64-portable.zip`.
-- ملف البصمات `SHA256SUMS.txt`.
-- بيان تحديث ثابت الاسم `latest.json` يمكن للبرنامج أو أي أداة تحديث قراءته من:
-  `https://github.com/hossamxp2025/Future-Speed/releases/latest/download/latest.json`.
-
-لإصدار نسخة جديدة، حدّث رقم النسخة ثم راجع `CHANGELOG.md`:
+مثال بعد تجهيز تغييرات الإصدار `1.2.0` وتحديث `CHANGELOG.md`:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File build\new-release.ps1 -Version 1.2.0
-git add Directory.Build.props installer/FutureSpeed.iss CHANGELOG.md
+git add Directory.Build.props installer/FutureSpeed.iss CHANGELOG.md docs/release-v1.2.0.md
 git commit -m "Release Future Speed 1.2.0"
 git tag v1.2.0
-git push origin main v1.2.0
+git push --atomic origin main refs/tags/v1.2.0
 ```
-
-لا تُرفع مجلدات `artifacts` إلى Git؛ ملفات التنزيل تُحفظ داخل صفحة **Releases**.
 
 ---
 
@@ -289,8 +292,11 @@ git push origin main v1.2.0
 ### سلامة البيانات
 - تحقق اختياري بـ **SHA-256** للمصدر والوجهة بعد كل ملف، ويُحذف الملف الناتج عند عدم التطابق.
 - كل ملف يُكتب أولاً باسم مؤقت `*.fspart` ثم يُعاد تسميته عند النجاح، فلا تبقى ملفات ناقصة.
-- تقارير بصيغة **JSON / CSV / TXT** تشمل كل ملف ونتيجته وبصمته وسبب فشله، وتُحفظ تلقائياً
-  بعد كل عملية (قابل للإيقاف).
+- تقارير بصيغة **HTML / JSON / CSV / TXT** تشمل كل ملف ونتيجته وبصمته وسبب فشله، وتُحفظ
+  تلقائياً بعد كل عملية (قابل للإيقاف).
+- **لا يختفي ملف فاشل بصمت:** لوحة «ملفات لم تُنقل» تعرض لكل ملف مساره الكامل في المصدر
+  والوجهة وسبب الفشل بلغة مفهومة (ملف مفتوح في برنامج آخر، صلاحيات، مسار طويل، مساحة…)
+  مع الكود التقني والإجراء المقترح، وزر **«تقرير مفصّل»** يفتح تقرير HTML قابلاً للطباعة.
 - Structured Logging عبر Serilog إلى ملفات يومية (يُحتفظ بـ 14 يوماً).
 
 ### استكمال العمليات
@@ -310,6 +316,18 @@ git push origin main v1.2.0
 - **Disk Imaging / Cloning:** البنية جاهزة (`IDiskImagingProvider`) لكن التنفيذ **غير مفعّل**
   في هذه النسخة عمداً — الكتابة المباشرة على الأقراص تحتاج لقطة VSS وصلاحيات مرتفعة واختبارات
   مستقلة، والنسخة الحالية تعرض السبب بوضوح بدل تقديم وظيفة وهمية.
+
+### ملفات لم تُنقل والتقرير المفصّل (جديد في 1.1.2)
+- كل ملف يفشل نقله يظهر في لوحة **«ملفات لم تُنقل»** بمساره الكامل في المصدر، ومساره
+  المقصود في الوجهة، وحجمه، وسبب الفشل بجملة مفهومة، والكود التقني (مثل `InUse (32)`)،
+  والمرحلة (أثناء النسخ / التحقق / فحص المصدر)، والإجراء المقترح لإتمامه.
+- اللوحة تظهر في النافذة المصغّرة (تبويب يفتح نفسه عند أول فشل)، وفي قائمة الانتظار،
+  وفي السجل، مع تنبيه مختصر في لوحة العملية الحالية.
+- **تقرير HTML** مستقل قابل للطباعة يُنشأ تلقائياً بعد أي عملية بها فشل، بلغة الواجهة
+  واتجاهها، ويُفتح بزر واحد. وJSON يحمل قسم `failures` مستقلاً للمعالجة الآلية.
+- الملفات التي يتعذّر حتى **فحصها** (صلاحيات مرفوضة مثلاً) تظهر في القائمة نفسها بدل أن
+  تختفي بصمت.
+- أزرار: **نسخ القائمة** إلى الحافظة · **فتح مجلد الملف** · **إعادة محاولة الفاشل**.
 
 ### تكامل Windows ونافذة النقل المصغرة (جديد في 1.1.0)
 - **أوامر في قائمة مستكشف الملفات** (اختيارية، وتُفعّل من الإعدادات أو أثناء التثبيت):
@@ -362,7 +380,7 @@ git push origin main v1.2.0
   (مثل `ConflictStrategy` و`SpeedCalculator` الذي يأخذ `TimeProvider`).
 - معالجة شاملة للاستثناءات: معالج على مستوى الـ Dispatcher والـ AppDomain والمهام غير المراقَبة،
   وخطأ في عملية واحدة لا يُسقط البرنامج.
-- **218 اختباراً** تمر بالكامل (189 في النواة + 29 في طبقة التطبيق): وحدات (المساحة، السرعة وETA، التعارض، المسارات ومنع Traversal،
+- **282 اختباراً** تمر بالكامل (237 في النواة + 45 في طبقة التطبيق): وحدات (المساحة، السرعة وETA، التعارض، المسارات ومنع Traversal،
   ضبط الأداء، التنسيق، الإيقاف المؤقت، حد السرعة) وتكامل (نسخ شجرة كاملة، التواريخ والخصائص،
   Move مع التحقق، سياسات التعارض، منع البدء عند نقص المساحة، الإلغاء دون ملفات ناقصة،
   الإيقاف والاستكمال، نقاط الاستعادة، ملف مقفول لا يوقف البقية، المزامنة، التقارير، القائمة)، إضافة إلى اختبارات الخاصية الجديدة: تحليل سطر الأوامر بالمسارات العربية والمسافات، قراءة الحافظة والتمييز بين Copy وCut، تجاهل الحافظة غير المحتوية على ملفات، مفاتيح Registry وتثبيتها وإزالتها دون بقايا، فشل التكامل دون تعطيل التطبيق، Named Pipes وتعدد الطلبات، تخطي الملف الحالي، التحديد المتعدد ومنع التكرار، وعدم كتابة أي مفتاح دون موافقة.

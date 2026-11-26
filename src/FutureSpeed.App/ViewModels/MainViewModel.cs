@@ -23,6 +23,7 @@ public sealed partial class MainViewModel : ObservableObject
     private readonly IThemeService _theme;
     private readonly IDialogService _dialogs;
     private readonly ILocalizationService _localization;
+    private readonly Func<FailureListViewModel> _failures;
 
     public MainViewModel(
         INavigationService navigation,
@@ -32,6 +33,7 @@ public sealed partial class MainViewModel : ObservableObject
         IThemeService theme,
         IDialogService dialogs,
         ILocalizationService localization,
+        Func<FailureListViewModel> failures,
         DrivesViewModel drives,
         NewTransferViewModel newTransfer,
         BackupViewModel backup,
@@ -48,6 +50,7 @@ public sealed partial class MainViewModel : ObservableObject
         _theme = theme;
         _dialogs = dialogs;
         _localization = localization;
+        _failures = failures;
 
         Drives = drives;
         NewTransfer = newTransfer;
@@ -210,7 +213,7 @@ public sealed partial class MainViewModel : ObservableObject
         var item = Queue.Jobs.FirstOrDefault(j => j.Id == running.Job.Id);
         if (item is null)
         {
-            item = new JobItemViewModel(running);
+            item = new JobItemViewModel(running, _failures());
         }
         else
         {
